@@ -409,5 +409,64 @@ namespace FASTER.Properties {
                 this["usingEFDlc"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::FASTER.Models.A3SRepositoryCollection a3sRepositories
+        {
+            get
+            {
+                return ((global::FASTER.Models.A3SRepositoryCollection)(this["a3sRepositories"]));
+            }
+            set
+            {
+                this["a3sRepositories"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string a3sDefaultSyncPath
+        {
+            get
+            {
+                return ((string)(this["a3sDefaultSyncPath"]));
+            }
+            set
+            {
+                this["a3sDefaultSyncPath"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool a3sSyncBeforeLaunch
+        {
+            get
+            {
+                return ((bool)(this["a3sSyncBeforeLaunch"]));
+            }
+            set
+            {
+                this["a3sSyncBeforeLaunch"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string a3sMetadataBridgePath
+        {
+            get
+            {
+                return ((string)(this["a3sMetadataBridgePath"]));
+            }
+            set
+            {
+                this["a3sMetadataBridgePath"] = value;
+            }
+        }
     }
 }

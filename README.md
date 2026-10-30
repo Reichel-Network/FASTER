@@ -61,6 +61,10 @@ Thanks go out to all the guys who helped the developpment and those who will tes
   - Reads local mods from server folder
   - Include additional folders to search
 
+- Native A3S repositories (in progress)
+  - First-class Repositories UI and settings inside FASTER (not a separate Arma3Sync/JAR workflow)
+  - Classic community `.a3s` metadata compatibility via `IA3SMetadataStore` (GPL-3.0)
+
 
 ##### **_ISSUES and FEEDBACK_**
 

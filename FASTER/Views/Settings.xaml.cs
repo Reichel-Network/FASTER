@@ -133,6 +133,9 @@ namespace FASTER.Views
             IAppUpdatesOnLaunch.IsChecked = Properties.Settings.Default?.checkForAppUpdates;
             IEnableDebugLog.IsChecked = Properties.Settings.Default?.enableDebugLog;
             IAPIKeyBox.Text = Properties.Settings.Default?.SteamAPIKey ?? string.Empty;
+            IA3SDefaultSyncPath.Text = Properties.Settings.Default?.a3sDefaultSyncPath ?? string.Empty;
+            IA3SSyncBeforeLaunch.IsChecked = Properties.Settings.Default?.a3sSyncBeforeLaunch ?? false;
+            IA3SMetadataBridgePath.Text = Properties.Settings.Default?.a3sMetadataBridgePath ?? string.Empty;
             Slider.Value = Properties.Settings.Default.CliWorkers;
             NumericUpDown.Value = Slider.Value;
         }
@@ -178,6 +181,43 @@ namespace FASTER.Views
             Properties.Settings.Default.checkForAppUpdates = IAppUpdatesOnLaunch.IsChecked ?? true;
             Properties.Settings.Default.checkForModUpdates = IModUpdatesOnLaunch.IsChecked ?? true;
             Properties.Settings.Default.enableDebugLog = IEnableDebugLog.IsChecked ?? false;
+            Properties.Settings.Default.a3sDefaultSyncPath = IA3SDefaultSyncPath.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.a3sSyncBeforeLaunch = IA3SSyncBeforeLaunch.IsChecked ?? false;
+            Properties.Settings.Default.a3sMetadataBridgePath = IA3SMetadataBridgePath.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.Save();
+        }
+
+        private void IA3SSyncBeforeLaunch_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.a3sSyncBeforeLaunch = IA3SSyncBeforeLaunch.IsChecked ?? false;
+            Properties.Settings.Default.Save();
+        }
+
+        private void A3SDefaultSyncPathButton_Click(object sender, RoutedEventArgs e)
+        {
+            var initial = string.IsNullOrWhiteSpace(IA3SDefaultSyncPath.Text)
+                ? Properties.Settings.Default.modStagingDirectory
+                : IA3SDefaultSyncPath.Text;
+            var path = MainWindow.Instance.SelectFolder(initial);
+            if (path == null)
+                return;
+
+            IA3SDefaultSyncPath.Text = path;
+            Properties.Settings.Default.a3sDefaultSyncPath = path;
+            Properties.Settings.Default.Save();
+        }
+
+        private void A3SMetadataBridgePathButton_Click(object sender, RoutedEventArgs e)
+        {
+            var initial = string.IsNullOrWhiteSpace(IA3SMetadataBridgePath.Text)
+                ? Environment.CurrentDirectory
+                : IA3SMetadataBridgePath.Text;
+            var path = MainWindow.Instance.SelectFolder(initial);
+            if (path == null)
+                return;
+
+            IA3SMetadataBridgePath.Text = path;
+            Properties.Settings.Default.a3sMetadataBridgePath = path;
             Properties.Settings.Default.Save();
         }
 
