@@ -34,13 +34,15 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition/>
                 </Grid.RowDefinitions>
                 <StackPanel Grid.ColumnSpan="10">
                     <Label Margin="8" Content="Program Settings" FontSize="12"/>
@@ -79,7 +81,35 @@
                     <Button Grid.Column="1" Name="IAPIKeyButton" Content="{iconPacks:Material Kind=Web}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Margin="5" Padding="2" Click="APIKeyButton_Click"/>
                 </Grid>
 
-                <Grid Grid.Row="6" Grid.ColumnSpan="4" Grid.Column="0">
+                <StackPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Margin="5,5,5,0">
+                    <Label Margin="5,0" Content="A3S Repositories" FontSize="12"/>
+                    <Separator Margin="5,0,5,8"/>
+                    <Grid Margin="5,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="IA3SDefaultSyncPath" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="Default A3S sync path" Margin="0,0,5,0"/>
+                        <Button Grid.Column="1" Name="IA3SDefaultSyncPathButton" Content="{iconPacks:Modern Kind=Folder}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Padding="2" Click="A3SDefaultSyncPathButton_Click"/>
+                    </Grid>
+                    <CheckBox Name="IA3SSyncBeforeLaunch" Content="Sync A3S repository before profile launch" Margin="5,8,5,4" Click="IA3SSyncBeforeLaunch_Checked"/>
+                    <Expander Header="Advanced — metadata bridge" Margin="5,8,5,0" IsExpanded="False">
+                        <StackPanel Margin="0,8,0,0">
+                            <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"
+                                       Text="Leave empty to use the bundled headless metadata helper when available. Operators do not need to install or point at an Arma3Sync JAR."/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="IA3SMetadataBridgePath" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="Metadata bridge path (optional)" Margin="0,0,5,0"/>
+                                <Button Grid.Column="1" Name="IA3SMetadataBridgePathButton" Content="{iconPacks:Modern Kind=Folder}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Padding="2" Click="A3SMetadataBridgePathButton_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+
+                <Grid Grid.Row="8" Grid.ColumnSpan="4" Grid.Column="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>

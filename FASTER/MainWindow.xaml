@@ -72,6 +72,12 @@
                             <Label Content="Deployment" FontWeight="DemiBold" FontSize="13" Name="lbl_LocalMods" Margin="15,0,0,0" />
                         </DockPanel>
                     </ToggleButton>
+                    <ToggleButton Name="navRepositories" Style="{StaticResource MahApps.Styles.ToggleButton.WindowCommands}" Click="ToggleButton_Click">
+                        <DockPanel Width="180">
+                            <iconPacks:PackIconModern Kind="Database" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                            <Label Content="Repositories" FontWeight="DemiBold" FontSize="13" Name="lbl_Repositories" Margin="15,0,0,0" />
+                        </DockPanel>
+                    </ToggleButton>
                     <ToggleButton Name="navServerStatus" Style="{StaticResource MahApps.Styles.ToggleButton.WindowCommands}" Click="ToggleButton_Click">
                         <DockPanel Width="180">
                             <iconPacks:PackIconModern Kind="Gauge75" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>

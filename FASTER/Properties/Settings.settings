@@ -98,5 +98,17 @@
     <Setting Name="enableDebugLog" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="a3sRepositories" Type="FASTER.Models.A3SRepositoryCollection" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="a3sDefaultSyncPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="a3sSyncBeforeLaunch" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="a3sMetadataBridgePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

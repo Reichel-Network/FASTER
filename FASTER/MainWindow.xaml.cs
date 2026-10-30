@@ -81,6 +81,20 @@ namespace FASTER
             set => _deployVM = value;
         }
 
+        Repositories _repositories;
+        public Repositories ContentRepositories
+        {
+            get => _repositories ??= new Repositories();
+            set => _repositories = value;
+        }
+
+        RepositoriesViewModel _repositoriesVM;
+        public RepositoriesViewModel RepositoriesViewModel
+        {
+            get => _repositoriesVM ??= new RepositoriesViewModel();
+            set => _repositoriesVM = value;
+        }
+
         ServerStatus _serverStatus;
         public ServerStatus ContentServerStatus
         {
@@ -221,6 +235,10 @@ namespace FASTER
                 case "navDeploy":
                     ContentDeploy.DataContext = DeployViewModel;
                     MainContent.Content = ContentDeploy;
+                    break;
+                case "navRepositories":
+                    ContentRepositories.DataContext = RepositoriesViewModel;
+                    MainContent.Content = ContentRepositories;
                     break;
                 case "navServerStatus":
                     MainContent.Content = ContentServerStatus;

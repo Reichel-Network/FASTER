@@ -25,6 +25,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0"  Name="IVersionLabel" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="16">Version:</TextBlock>
@@ -34,7 +35,9 @@
                 <TextBlock Grid.Row="2" Style="{DynamicResource MahApps.Styles.TextBlock.Watermark}" Margin="16,12,16,0" TextWrapping="Wrap" FontSize="13" TextAlignment="Justify">
                     Thanks go out to Flax (big thumbs up !) for his amazing server tool and programming. Also to BI for giving us an awesome game to play with and break.
                 </TextBlock>
-                <TextBlock Grid.Row="3" Margin="16" TextWrapping="Wrap" FontSize="13" TextAlignment="Center" VerticalAlignment="Bottom">
+                <TextBlock Grid.Row="3" Style="{DynamicResource MahApps.Styles.TextBlock.Watermark}" Margin="16,12,16,0" TextWrapping="Wrap" FontSize="13" TextAlignment="Justify"
+                           Text="Native A3S repository support is being added inside FASTER (C# owns UI and sync/build/upload). Classic community .a3s metadata stays compatible via an IA3SMetadataStore boundary. Licensed under GPL-3.0."/>
+                <TextBlock Grid.Row="4" Margin="16" TextWrapping="Wrap" FontSize="13" TextAlignment="Center" VerticalAlignment="Bottom">
                     THIS TOOL IS IN NO WAY AFFILIATED WITH BOHEMIA INTERACTIVE AND ITS DEVELOPERS
                 </TextBlock>
             </Grid>
