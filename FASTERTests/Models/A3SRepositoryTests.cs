@@ -75,15 +75,15 @@ namespace FASTER.Models.Tests
         }
 
         /// <summary>
-        /// Placeholder for classic <c>.a3s/autoconfig</c> blob round-trips via <c>IA3SMetadataStore</c>.
-        /// Skipped until a checked-in fixture binary exists (Phase 1).
+        /// Live bridge smoke against public host — needs companion JAR + JDK 25.
+        /// Unit coverage of bridge-shaped JSON lives in <c>A3SPhase1Tests</c>.
         /// </summary>
         [Test]
         [Category("Integration")]
-        [Ignore("TODO: check in a sample .a3s/autoconfig fixture blob for IA3SMetadataStore golden-repo tests")]
+        [Ignore("Requires a3s-metadata-bridge JAR + JDK 25; public host smoke is manual / companion CI")]
         public void MetadataStore_AutoconfigFixture_RoundTrip()
         {
-            Assert.Fail("Fixture not available yet.");
+            Assert.Fail("Live bridge smoke is gated on A3S_METADATA_BRIDGE_JAR.");
         }
     }
 }

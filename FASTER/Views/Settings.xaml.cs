@@ -209,11 +209,8 @@ namespace FASTER.Views
 
         private void A3SMetadataBridgePathButton_Click(object sender, RoutedEventArgs e)
         {
-            var initial = string.IsNullOrWhiteSpace(IA3SMetadataBridgePath.Text)
-                ? Environment.CurrentDirectory
-                : IA3SMetadataBridgePath.Text;
-            var path = MainWindow.Instance.SelectFolder(initial);
-            if (path == null)
+            var path = Functions.SelectFile("A3S metadata bridge JAR|a3s-metadata-bridge*.jar;*.jar|All files|*.*");
+            if (string.IsNullOrWhiteSpace(path))
                 return;
 
             IA3SMetadataBridgePath.Text = path;
