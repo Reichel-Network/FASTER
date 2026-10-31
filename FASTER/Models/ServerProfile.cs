@@ -70,6 +70,9 @@ namespace FASTER.Models
         private bool _loadMissionToMemory = false;
         private int _limitFPS = 0;
         private bool _enableSteamLogs = false;
+        private string _a3sRepositoryId = string.Empty;
+        private string _a3sEventName = string.Empty;
+        private string _a3sPublicIp = string.Empty;
 
         private List<ProfileMod> _profileMods = new List<ProfileMod>();
         private string _profileModsFilter = "";
@@ -325,6 +328,39 @@ namespace FASTER.Models
             {
                 _enableSteamLogs = value;
                 RaisePropertyChanged(nameof(EnableSteamLogs));
+            }
+        }
+
+        /// <summary>Attached A3S repository id for event sync / sync-before-launch (Phase 3).</summary>
+        public string A3SRepositoryId
+        {
+            get => _a3sRepositoryId;
+            set
+            {
+                _a3sRepositoryId = value ?? string.Empty;
+                RaisePropertyChanged(nameof(A3SRepositoryId));
+            }
+        }
+
+        /// <summary>Attached A3S event (modset) name for this profile.</summary>
+        public string A3SEventName
+        {
+            get => _a3sEventName;
+            set
+            {
+                _a3sEventName = value ?? string.Empty;
+                RaisePropertyChanged(nameof(A3SEventName));
+            }
+        }
+
+        /// <summary>Optional public IP/hostname written into autoconfig favorite servers.</summary>
+        public string A3SPublicIp
+        {
+            get => _a3sPublicIp;
+            set
+            {
+                _a3sPublicIp = value ?? string.Empty;
+                RaisePropertyChanged(nameof(A3SPublicIp));
             }
         }
 

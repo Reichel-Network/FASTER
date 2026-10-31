@@ -21,6 +21,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="140" />
         </Grid.RowDefinitions>
 
@@ -69,6 +70,23 @@
                 <CheckBox Content="Exact match" Margin="10,0,0,0" VerticalAlignment="Center"
                           IsChecked="{Binding ExactMatch}" ToolTip="Delete local files not in the remote tree (asks for confirm)"
                           IsEnabled="{Binding CanStartWork}" />
+                <Separator Margin="5,0" Width="8" />
+                <Button Content="Events" ToolTip="Load A3S events (modsets) from repository metadata"
+                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                        Padding="12,5" Margin="0,0,5,0" Click="LoadEvents_Click"
+                        IsEnabled="{Binding CanStartWork}" />
+                <Button Content="Apply event" ToolTip="Map selected event addons onto the selected profile"
+                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                        Padding="12,5" Margin="0,0,5,0" Click="ApplyEvent_Click"
+                        IsEnabled="{Binding CanStartWork}" />
+                <Button Content="Sync → Deploy → Launch" ToolTip="One-click: sync repo, apply event, deploy, launch profile"
+                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                        Padding="12,5" Margin="0,0,5,0" Click="SyncEventDeployLaunch_Click"
+                        IsEnabled="{Binding CanStartWork}" />
+                <Button Content="Favorite → autoconfig" ToolTip="Write selected profile as favorite server into autoconfig"
+                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                        Padding="12,5" Margin="0,0,5,0" Click="WriteFavorite_Click"
+                        IsEnabled="{Binding CanStartWork}" />
             </StackPanel>
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0"
                        Text="{Binding StatusText}" Opacity="0.8" TextWrapping="Wrap" />
@@ -107,7 +125,48 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="2" Margin="10,0,10,5"
+        <Grid Grid.Row="2" Margin="10,0,10,5">
+            <Grid.Effect>
+                <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
+            </Grid.Effect>
+            <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Grid.Column="0" Margin="0,0,5,0"
+                              ItemsSource="{Binding Events}"
+                              SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                              DisplayMemberPath="Name"
+                              mah:TextBoxHelper.Watermark="A3S event (modset)"
+                              ToolTip="Events loaded from .a3s/events via IA3SMetadataStore"/>
+                    <ComboBox Grid.Column="1" Margin="0,0,5,0"
+                              ItemsSource="{Binding Profiles}"
+                              SelectedItem="{Binding SelectedProfileForEvent, Mode=TwoWay}"
+                              DisplayMemberPath="Name"
+                              mah:TextBoxHelper.Watermark="Server profile"
+                              ToolTip="Profile to receive event addon lists / launch target"/>
+                    <CheckBox Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center"
+                              Content="Client" IsChecked="{Binding ApplyEventClient}"
+                              ToolTip="Apply event addons to client-side mod list"/>
+                    <CheckBox Grid.Column="3" Margin="0,0,8,0" VerticalAlignment="Center"
+                              Content="Server" IsChecked="{Binding ApplyEventServer}"
+                              ToolTip="Apply event addons to server-side mod list"/>
+                    <CheckBox Grid.Column="4" Margin="0,0,8,0" VerticalAlignment="Center"
+                              Content="HC" IsChecked="{Binding ApplyEventHeadless}"
+                              ToolTip="Apply event addons to headless client mod list"/>
+                    <TextBlock Grid.Column="5" VerticalAlignment="Center" Opacity="0.75" TextWrapping="Wrap"
+                               Text="{Binding SelectedEvent.Description}"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="10,0,10,5"
               Visibility="{Binding IsAddPanelOpen, Converter={StaticResource BoolToVis}}">
             <Grid.Effect>
                 <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
@@ -143,7 +202,7 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="3" Margin="10,0,10,5"
+        <Grid Grid.Row="4" Margin="10,0,10,5"
               Visibility="{Binding IsConfigPanelOpen, Converter={StaticResource BoolToVis}}">
             <Grid.Effect>
                 <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
@@ -215,10 +274,10 @@
             </Border>
         </Grid>
 
-        <ProgressBar Grid.Row="4" Margin="10,0,10,5" Height="6" Minimum="0" Maximum="100"
+        <ProgressBar Grid.Row="5" Margin="10,0,10,5" Height="6" Minimum="0" Maximum="100"
                      Value="{Binding Progress}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
 
-        <TextBox Grid.Row="5" Margin="10,5,10,10" IsReadOnly="True" TextWrapping="Wrap"
+        <TextBox Grid.Row="6" Margin="10,5,10,10" IsReadOnly="True" TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
                  Text="{Binding Output, Mode=OneWay}"
                  mah:TextBoxHelper.UseFloatingWatermark="True"

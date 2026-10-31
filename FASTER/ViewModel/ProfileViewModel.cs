@@ -1,4 +1,5 @@
 using FASTER.Models;
+using FASTER.Services.A3S;
 
 using Microsoft.AppCenter.Analytics;
 using Microsoft.AppCenter.Crashes;
@@ -118,11 +119,53 @@ namespace FASTER.ViewModel
             return commandLine;
         }
 
-        internal void LaunchServer()
+        internal async Task LaunchServer()
+        {
+            if (Properties.Settings.Default.a3sSyncBeforeLaunch
+                && !string.IsNullOrWhiteSpace(Profile.A3SRepositoryId)
+                && !string.IsNullOrWhiteSpace(Profile.A3SEventName))
+            {
+                try
+                {
+                    DisplayMessage($"A3S sync-before-launch: {Profile.A3SEventName}…");
+                    var eventService = new A3SEventService();
+                    var repo = eventService.FindAttachedRepository(Profile);
+                    if (repo == null)
+                    {
+                        DisplayMessage("Attached A3S repository not found; launching without sync.");
+                    }
+                    else
+                    {
+                        Action? deploy = null;
+                        if (MainWindow.HasLoaded())
+                            deploy = () => MainWindow.Instance.DeployViewModel.DeployAll();
+
+                        await eventService.SyncEventDeployLaunchAsync(
+                                repo,
+                                Profile,
+                                Profile.A3SEventName,
+                                deployAll: deploy,
+                                launchAsync: null)
+                            .ConfigureAwait(true);
+                        DisplayMessage($"Synced event \"{Profile.A3SEventName}\" — launching…");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DisplayMessage($"A3S sync-before-launch failed: {ex.Message}");
+                    return;
+                }
+            }
+
+            LaunchServerCore();
+        }
+
+        /// <summary>Launch without running sync-before-launch (used by Sync → Deploy → Launch).</summary>
+        internal void LaunchServerCore()
         {
             if (!VerifyBeforeLaunch()) return;
 
-            //Launching... 
+            //Launching...
             DisplayMessage($"Launching Profile {Profile.Name}...");
 
             Analytics.TrackEvent("Profile - Clicked LaunchServer", new Dictionary<string, string>
@@ -157,7 +200,6 @@ namespace FASTER.ViewModel
 
             LaunchHCs();
             #endif
-
         }
 
         /// <summary>
@@ -495,6 +537,158 @@ namespace FASTER.ViewModel
             Profile.ProfileMods = modlist;
 
             LoadMissions();
+            RefreshA3SRepositories();
+        }
+
+        public ObservableCollection<A3SRepository> A3SRepositories { get; } = new();
+
+        public ObservableCollection<string> A3SEventNames { get; } = new();
+
+        public bool A3SSyncBeforeLaunch
+        {
+            get => Properties.Settings.Default.a3sSyncBeforeLaunch;
+            set
+            {
+                Properties.Settings.Default.a3sSyncBeforeLaunch = value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        public void RefreshA3SRepositories()
+        {
+            A3SRepositories.Clear();
+            var repos = Properties.Settings.Default.a3sRepositories?.Repositories;
+            if (repos != null)
+            {
+                foreach (var repo in repos)
+                    A3SRepositories.Add(repo);
+            }
+
+            // Nudge bindings so the attached repository ComboBox re-selects.
+            Profile.RaisePropertyChanged(nameof(ServerProfile.A3SRepositoryId));
+            _ = RefreshA3SEventsAsync();
+        }
+
+        public A3SRepository? SelectedA3SRepository
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(Profile.A3SRepositoryId))
+                    return null;
+                return A3SRepositories.FirstOrDefault(r =>
+                    string.Equals(r.Id, Profile.A3SRepositoryId, StringComparison.OrdinalIgnoreCase));
+            }
+            set
+            {
+                Profile.A3SRepositoryId = value?.Id ?? string.Empty;
+                _ = RefreshA3SEventsAsync();
+            }
+        }
+
+        public async Task RefreshA3SEventsAsync()
+        {
+            A3SEventNames.Clear();
+            var repo = SelectedA3SRepository;
+            if (repo == null)
+                return;
+
+            try
+            {
+                var events = await new A3SEventService().ListEventsAsync(repo).ConfigureAwait(true);
+                foreach (var evt in events)
+                    A3SEventNames.Add(evt.Name);
+            }
+            catch
+            {
+                // Operator can retry; keep attach fields editable.
+            }
+        }
+
+        public async Task ApplyAttachedA3SEventAsync()
+        {
+            if (SelectedA3SRepository == null || string.IsNullOrWhiteSpace(Profile.A3SEventName))
+            {
+                DisplayMessage("Attach an A3S repository and event name first.");
+                return;
+            }
+
+            try
+            {
+                var service = new A3SEventService();
+                var events = await service.ListEventsAsync(SelectedA3SRepository).ConfigureAwait(true);
+                var evt = events.FirstOrDefault(e =>
+                    string.Equals(e.Name, Profile.A3SEventName, StringComparison.OrdinalIgnoreCase));
+                if (evt == null)
+                {
+                    DisplayMessage($"Event \"{Profile.A3SEventName}\" not found in repository metadata.");
+                    return;
+                }
+
+                LoadData();
+                var result = service.ApplyEventToProfile(evt, Profile);
+                service.AttachEventToProfile(Profile, SelectedA3SRepository, evt.Name);
+                DisplayMessage(
+                    $"Applied \"{result.EventName}\": matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage($"Apply A3S event failed: {ex.Message}");
+            }
+        }
+
+        public async Task WriteA3SFavoriteServerAsync()
+        {
+            if (SelectedA3SRepository == null)
+            {
+                DisplayMessage("Attach an A3S repository first.");
+                return;
+            }
+
+            try
+            {
+                var fav = await new A3SEventService()
+                    .WriteFavoriteServerFromProfileAsync(SelectedA3SRepository, Profile)
+                    .ConfigureAwait(true);
+                DisplayMessage($"Wrote favorite \"{fav.Name}\" ({fav.IpAddress}:{fav.Port}) into autoconfig.");
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage($"Write favorite server failed: {ex.Message}");
+            }
+        }
+
+        public async Task SyncAttachedEventDeployLaunchAsync()
+        {
+            if (SelectedA3SRepository == null || string.IsNullOrWhiteSpace(Profile.A3SEventName))
+            {
+                DisplayMessage("Attach an A3S repository and event first.");
+                return;
+            }
+
+            try
+            {
+                DisplayMessage($"Sync event → Deploy → Launch: {Profile.A3SEventName}…");
+                Action? deploy = null;
+                if (MainWindow.HasLoaded())
+                    deploy = () => MainWindow.Instance.DeployViewModel.DeployAll();
+
+                await new A3SEventService().SyncEventDeployLaunchAsync(
+                        SelectedA3SRepository,
+                        Profile,
+                        Profile.A3SEventName,
+                        deployAll: deploy,
+                        launchAsync: async _ =>
+                        {
+                            SaveProfile();
+                            await Task.Yield();
+                            LaunchServerCore();
+                        })
+                    .ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage($"Sync event → Deploy → Launch failed: {ex.Message}");
+            }
         }
 
         public void UnloadData()

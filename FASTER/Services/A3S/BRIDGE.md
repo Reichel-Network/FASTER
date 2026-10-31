@@ -24,6 +24,7 @@ java -jar <a3s-metadata-bridge-*-all.jar> <command> [options]
 | --- | --- |
 | Import / refresh repo metadata | `read --source <autoconfigUrlOrContentRoot> --kind all --out -` |
 | Read one file | `read --source … --kind autoconfig\|sync\|serverinfo\|changelogs\|events --out -` |
+| Phase 3 events / favorites | `read --kind events`; write `autoconfig` with `favoriteServers` via `write --kind autoconfig` |
 | Write one file | `write --target <contentRoot> --kind <kind> --in <json\|->` |
 | **Phase 2 Build (preferred)** | `write --target <contentRoot> --kind all --in <files-envelope\|->` |
 | Mirror remote blobs locally | `copy --from <url> --to <contentRoot> --kind all` |
@@ -89,6 +90,7 @@ Build walk skips metadata sidecars under the publish root: classic `.a3s/` and t
 | Metadata I/O | `IA3SMetadataStore` → bridge `write --kind all` |
 | HTTP(S) PUT / SFTP upload of changed files + `.a3s/*` | `A3SProtocolClient` + `A3SPublishService` |
 | Sync/Check download UX | `A3SSyncService` + Repositories UI |
+| Events ↔ profiles, favorite servers, Sync→Deploy→Launch | `A3SEventService` + Repositories / Profile UI |
 | Repo defs (publish root, upload protocol/creds) | FASTER settings / `A3SRepository` |
 
 ## Publish smoke limits

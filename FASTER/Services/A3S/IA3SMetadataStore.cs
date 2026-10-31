@@ -29,6 +29,9 @@ namespace FASTER.Services.A3S
         /// <summary>Read changelogs only (<c>--kind changelogs</c>). Missing file may throw.</summary>
         Task<A3SChangelogs> ReadChangelogsAsync(string source, CancellationToken cancellationToken = default);
 
+        /// <summary>Read events only (<c>--kind events</c>). Missing file may return empty list or throw per store.</summary>
+        Task<A3SEvents> ReadEventsAsync(string source, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Write one classic <c>.a3s/{kind}</c> file under <paramref name="contentRoot"/>
         /// (bridge: <c>write --target … --kind … --in …</c>).
@@ -51,6 +54,6 @@ namespace FASTER.Services.A3S
         public A3SSyncTreeNode? Sync { get; init; }
         public A3SServerInfo? ServerInfo { get; init; }
         public A3SChangelogs? Changelogs { get; init; }
-        public object? Events { get; init; }
+        public A3SEvents? Events { get; init; }
     }
 }

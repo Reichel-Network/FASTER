@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +15,7 @@ using FASTER.Services.A3S;
 namespace FASTER.ViewModel
 {
     /// <summary>
-    /// Native A3S Repositories (Phase 1 sync + Phase 2 Build/Publish) with Updater-like busy/log.
+    /// Native A3S Repositories (Phases 1–3: sync, build/publish, events ↔ profiles) with Updater-like busy/log.
     /// </summary>
     public class RepositoriesViewModel : INotifyPropertyChanged
     {
@@ -24,6 +26,7 @@ namespace FASTER.ViewModel
         private readonly A3SBuildService _buildService;
         private readonly A3SPublishService _publishService;
         private readonly A3SModImport _modImport;
+        private readonly A3SEventService _eventService;
 
         private A3SRepository? _selectedRepository;
         private string _newName = string.Empty;
@@ -45,6 +48,11 @@ namespace FASTER.ViewModel
         private bool _isConfigPanelOpen;
         private double _progress;
         private CancellationTokenSource? _cts;
+        private A3SEventInfo? _selectedEvent;
+        private ServerProfile? _selectedProfileForEvent;
+        private bool _applyEventClient = true;
+        private bool _applyEventServer = true;
+        private bool _applyEventHeadless = true;
 
         public RepositoriesViewModel()
             : this(new A3SRepositoryService())
@@ -59,7 +67,8 @@ namespace FASTER.ViewModel
                 null,
                 null,
                 null,
-                new A3SModImport())
+                new A3SModImport(),
+                null)
         {
         }
 
@@ -70,7 +79,8 @@ namespace FASTER.ViewModel
             A3SSyncService? syncService,
             A3SBuildService? buildService,
             A3SPublishService? publishService,
-            A3SModImport modImport)
+            A3SModImport modImport,
+            A3SEventService? eventService)
         {
             _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
             _metadataStore = metadataStore ?? throw new ArgumentNullException(nameof(metadataStore));
@@ -79,11 +89,19 @@ namespace FASTER.ViewModel
             _buildService = buildService ?? new A3SBuildService(_metadataStore);
             _publishService = publishService ?? new A3SPublishService(_metadataStore, _protocolClient, _buildService);
             _modImport = modImport ?? throw new ArgumentNullException(nameof(modImport));
+            _eventService = eventService ?? new A3SEventService(
+                _metadataStore, _repositoryService, _syncService, _modImport, Settings.Default);
             Repositories = _repositoryService.Repositories;
-            AppendLog("Repositories ready. Sync/Check + Build/Publish use native C# + IA3SMetadataStore bridge.");
+            Events = new ObservableCollection<A3SEventInfo>();
+            Profiles = new ObservableCollection<ServerProfile>();
+            AppendLog("Repositories ready. Sync/Check + Build/Publish + Events use native C# + IA3SMetadataStore bridge.");
         }
 
         public ObservableCollection<A3SRepository> Repositories { get; private set; }
+
+        public ObservableCollection<A3SEventInfo> Events { get; }
+
+        public ObservableCollection<ServerProfile> Profiles { get; }
 
         public A3SRepository? SelectedRepository
         {
@@ -94,8 +112,41 @@ namespace FASTER.ViewModel
                 RaisePropertyChanged();
                 if (value != null && IsConfigPanelOpen)
                     LoadConfigFromSelected();
+                _ = RefreshEventsQuietAsync();
             }
         }
+
+        public A3SEventInfo? SelectedEvent
+        {
+            get => _selectedEvent;
+            set { _selectedEvent = value; RaisePropertyChanged(); }
+        }
+
+        public ServerProfile? SelectedProfileForEvent
+        {
+            get => _selectedProfileForEvent;
+            set { _selectedProfileForEvent = value; RaisePropertyChanged(); }
+        }
+
+        public bool ApplyEventClient
+        {
+            get => _applyEventClient;
+            set { _applyEventClient = value; RaisePropertyChanged(); }
+        }
+
+        public bool ApplyEventServer
+        {
+            get => _applyEventServer;
+            set { _applyEventServer = value; RaisePropertyChanged(); }
+        }
+
+        public bool ApplyEventHeadless
+        {
+            get => _applyEventHeadless;
+            set { _applyEventHeadless = value; RaisePropertyChanged(); }
+        }
+
+        public bool HasEvents => Events.Count > 0;
 
         public string NewName
         {
@@ -219,9 +270,26 @@ namespace FASTER.ViewModel
             Repositories = _repositoryService.Repositories;
             RaisePropertyChanged(nameof(Repositories));
             RaisePropertyChanged(nameof(HasRepositories));
+            RefreshProfiles();
             StatusText = Repositories.Count == 0
                 ? "No repositories yet. Add one with a name and autoconfig URL."
                 : $"{Repositories.Count} repository(ies) loaded.";
+            _ = RefreshEventsQuietAsync();
+        }
+
+        public void RefreshProfiles()
+        {
+            Profiles.Clear();
+            var list = Settings.Default.Profiles;
+            if (list == null)
+                return;
+            foreach (var p in list)
+                Profiles.Add(p);
+            if (SelectedProfileForEvent != null
+                && Profiles.All(p => p.Id != SelectedProfileForEvent.Id))
+            {
+                SelectedProfileForEvent = null;
+            }
         }
 
         public void UnloadData()
@@ -602,6 +670,331 @@ namespace FASTER.ViewModel
             {
                 // ignore
             }
+        }
+
+        public async Task LoadEventsAsync()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            if (IsBusy)
+            {
+                DisplayMessage("A repository operation is already running.");
+                return;
+            }
+
+            IsBusy = true;
+            Progress = 0;
+            try
+            {
+                StatusText = $"Loading events for \"{SelectedRepository.Name}\"…";
+                AppendLog($"Events load: {SelectedRepository.Name}");
+                var list = await _eventService.ListEventsAsync(SelectedRepository).ConfigureAwait(true);
+                Events.Clear();
+                foreach (var evt in list)
+                    Events.Add(evt);
+                SelectedEvent = Events.FirstOrDefault();
+                RaisePropertyChanged(nameof(HasEvents));
+                StatusText = Events.Count == 0
+                    ? $"No events in \"{SelectedRepository.Name}\" metadata."
+                    : $"{Events.Count} event(s) loaded from \"{SelectedRepository.Name}\".";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Load events failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                IsBusy = false;
+                Progress = 0;
+            }
+        }
+
+        public void ApplySelectedEventToProfile()
+        {
+            if (SelectedEvent == null)
+            {
+                DisplayMessage("Select an event first (Load Events).");
+                return;
+            }
+
+            if (SelectedProfileForEvent == null)
+            {
+                DisplayMessage("Select a server profile to apply the event modset.");
+                return;
+            }
+
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            try
+            {
+                EnsureProfileModsLoaded(SelectedProfileForEvent);
+                var result = _eventService.ApplyEventToProfile(
+                    SelectedEvent,
+                    SelectedProfileForEvent,
+                    new A3SEventApplyOptions
+                    {
+                        ApplyClient = ApplyEventClient,
+                        ApplyServer = ApplyEventServer,
+                        ApplyHeadless = ApplyEventHeadless
+                    });
+                _eventService.AttachEventToProfile(SelectedProfileForEvent, SelectedRepository, SelectedEvent.Name);
+
+                AppendLog(
+                    $"Applied event \"{result.EventName}\" → profile \"{SelectedProfileForEvent.Name}\": " +
+                    $"matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
+                if (result.MissingAddons.Count > 0)
+                    AppendLog("  Missing addons: " + string.Join(", ", result.MissingAddons));
+
+                StatusText = $"Event \"{result.EventName}\" applied to \"{SelectedProfileForEvent.Name}\".";
+                DisplayMessage(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Apply event failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+        }
+
+        public async Task WriteFavoriteServerAsync()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            if (SelectedProfileForEvent == null)
+            {
+                DisplayMessage("Select a server profile for the favorite server entry.");
+                return;
+            }
+
+            if (IsBusy)
+            {
+                DisplayMessage("A repository operation is already running.");
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                StatusText = "Writing favorite server into autoconfig…";
+                AppendLog($"Favorite server ← profile \"{SelectedProfileForEvent.Name}\"");
+                var fav = await _eventService
+                    .WriteFavoriteServerFromProfileAsync(SelectedRepository, SelectedProfileForEvent)
+                    .ConfigureAwait(true);
+                StatusText = $"Favorite \"{fav.Name}\" ({fav.IpAddress}:{fav.Port}) written to autoconfig.";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Write favorite failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public async Task SyncEventDeployLaunchAsync(bool launch)
+        {
+            if (!TryBeginWork(out var repo, out var token, requireLocalPath: true))
+                return;
+
+            if (SelectedEvent == null)
+            {
+                EndWork();
+                DisplayMessage("Select an event first (Load Events).");
+                return;
+            }
+
+            if (SelectedProfileForEvent == null)
+            {
+                EndWork();
+                DisplayMessage("Select a server profile for Sync → Deploy → Launch.");
+                return;
+            }
+
+            var exact = ExactMatch;
+            var confirmed = false;
+            if (exact)
+            {
+                var answer = MessageBox.Show(
+                    "Exact-match will DELETE local files under this repository path that are not in the remote sync tree " +
+                    "(except .a3s metadata and hidden folders). Continue?",
+                    "Confirm exact-match delete",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                confirmed = answer == MessageBoxResult.Yes;
+                if (!confirmed)
+                    exact = false;
+            }
+
+            try
+            {
+                EnsureProfileModsLoaded(SelectedProfileForEvent);
+                StatusText = launch
+                    ? $"Sync event → Deploy → Launch \"{SelectedEvent.Name}\"…"
+                    : $"Sync event → Deploy \"{SelectedEvent.Name}\"…";
+                AppendLog(StatusText);
+
+                Func<ServerProfile, Task>? launchFn = null;
+                if (launch)
+                {
+                    launchFn = async profile =>
+                    {
+                        var vm = new ProfileViewModel(profile);
+                        vm.SaveProfile();
+                        await Task.Yield();
+                        vm.LaunchServerCore();
+                    };
+                }
+
+                Action? deploy = null;
+                if (MainWindow.HasLoaded())
+                {
+                    deploy = () =>
+                    {
+                        try
+                        {
+                            MainWindow.Instance.DeployViewModel.DeployAll();
+                        }
+                        catch
+                        {
+                            // Event service falls back to internal deploy.
+                        }
+                    };
+                }
+
+                var progress = CreateProgress();
+                var result = await _eventService.SyncEventDeployLaunchAsync(
+                        repo,
+                        SelectedProfileForEvent,
+                        SelectedEvent.Name,
+                        new A3SEventApplyOptions
+                        {
+                            ApplyClient = ApplyEventClient,
+                            ApplyServer = ApplyEventServer,
+                            ApplyHeadless = ApplyEventHeadless
+                        },
+                        new A3SSyncOptions { ExactMatch = exact, ExactMatchConfirmed = confirmed },
+                        progress,
+                        launchFn,
+                        deploy,
+                        token)
+                    .ConfigureAwait(true);
+
+                AppendLog(
+                    $"Sync event complete: rev {result.Sync.Revision}, downloaded {result.Sync.Downloaded}, " +
+                    $"matched mods {result.Apply.MatchedMods.Count}, missing {result.Apply.MissingAddons.Count}, " +
+                    $"launched={result.Launched}.");
+                if (result.Apply.MissingAddons.Count > 0)
+                    AppendLog("  Missing addons: " + string.Join(", ", result.Apply.MissingAddons));
+
+                StatusText = result.Launched
+                    ? $"Synced event \"{SelectedEvent.Name}\" and launched \"{SelectedProfileForEvent.Name}\"."
+                    : $"Synced event \"{SelectedEvent.Name}\" and deployed for \"{SelectedProfileForEvent.Name}\".";
+                DisplayMessage(StatusText);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Sync event cancelled.";
+                AppendLog(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Sync event failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                EndWork();
+            }
+        }
+
+        private async Task RefreshEventsQuietAsync()
+        {
+            if (SelectedRepository == null || IsBusy)
+            {
+                Events.Clear();
+                SelectedEvent = null;
+                RaisePropertyChanged(nameof(HasEvents));
+                return;
+            }
+
+            try
+            {
+                var list = await _eventService.ListEventsAsync(SelectedRepository).ConfigureAwait(true);
+                Events.Clear();
+                foreach (var evt in list)
+                    Events.Add(evt);
+                SelectedEvent = Events.FirstOrDefault(e =>
+                    SelectedProfileForEvent != null
+                    && string.Equals(e.Name, SelectedProfileForEvent.A3SEventName, StringComparison.OrdinalIgnoreCase))
+                    ?? Events.FirstOrDefault();
+                RaisePropertyChanged(nameof(HasEvents));
+            }
+            catch
+            {
+                // Quiet refresh — operator can click Load Events for errors.
+                Events.Clear();
+                SelectedEvent = null;
+                RaisePropertyChanged(nameof(HasEvents));
+            }
+        }
+
+        private static void EnsureProfileModsLoaded(ServerProfile profile)
+        {
+            if (profile.ProfileMods == null)
+                profile.ProfileMods = new List<ProfileMod>();
+
+            if (Settings.Default.armaMods?.ArmaMods == null)
+                return;
+
+            var modlist = new List<ProfileMod>();
+            foreach (var mod in Settings.Default.armaMods.ArmaMods)
+            {
+                var existing = profile.ProfileMods.Find(m => m.Id == mod.WorkshopId);
+                if (existing == null)
+                {
+                    modlist.Add(new ProfileMod
+                    {
+                        Name = mod.Name,
+                        Id = mod.WorkshopId,
+                        IsLocal = mod.IsLocal
+                    });
+                }
+                else
+                {
+                    existing.Name = mod.Name;
+                    modlist.Add(existing);
+                }
+            }
+
+            foreach (var leftover in profile.ProfileMods.Where(pm =>
+                         modlist.All(m => m.Id != pm.Id)))
+            {
+                modlist.Add(leftover);
+            }
+
+            profile.ProfileMods = modlist;
         }
 
         private void LoadConfigFromSelected()
