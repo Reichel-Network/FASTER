@@ -46,8 +46,11 @@ namespace FASTER.Services.Tests
                 Path.Combine(Path.GetTempPath(), $"no-bridge-{Guid.NewGuid():N}.jar"));
             Assert.ThrowsAsync<A3SBridgeNotFoundException>(async () =>
                 await store.ReadAllAsync("https://example/.a3s/autoconfig"));
-            Assert.ThrowsAsync<NotImplementedException>(async () =>
-                await store.WriteMetadataAsync("/tmp", new object()));
+            Assert.ThrowsAsync<A3SBridgeNotFoundException>(async () =>
+                await store.WriteAllAsync("/tmp", new A3SMetadataWriteSet
+                {
+                    ServerInfo = new A3SServerInfo { Revision = 1 }
+                }));
         }
     }
 }

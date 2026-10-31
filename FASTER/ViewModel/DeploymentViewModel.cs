@@ -281,6 +281,49 @@ namespace FASTER.ViewModel
         }
 
         /// <summary>
+        /// Point the selected (or first) A3S repository publish root at Deployment InstallPath,
+        /// then switch to Repositories for Build/Publish.
+        /// </summary>
+        public void SetAsA3SPublishRoot()
+        {
+            if (string.IsNullOrWhiteSpace(Deployment?.InstallPath) || !Directory.Exists(Deployment.InstallPath))
+            {
+                DisplayMessage("Set a valid Deployment Install Path first.");
+                return;
+            }
+
+            try
+            {
+                var repoService = new Services.A3S.A3SRepositoryService();
+                var repos = repoService.List();
+                A3SRepository? target = null;
+
+                if (MainWindow.HasLoaded())
+                    target = MainWindow.Instance.RepositoriesViewModel?.SelectedRepository;
+
+                target ??= repos.FirstOrDefault();
+                if (target == null)
+                {
+                    DisplayMessage("Add an A3S repository under Repositories first, then retry.");
+                    return;
+                }
+
+                repoService.UseDeploymentInstallPathAsPublishRoot(target);
+                DisplayMessage($"A3S \"{target.Name}\" publish root → {Deployment.InstallPath}. Open Repositories → Build / Publish.");
+
+                if (MainWindow.HasLoaded())
+                {
+                    MainWindow.Instance.RepositoriesViewModel.SelectedRepository = target;
+                    MainWindow.Instance.RepositoriesViewModel.LoadData();
+                }
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage("Could not set A3S publish root: " + ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Display a message on the UI
         /// </summary>
         /// <param name="msg"></param>

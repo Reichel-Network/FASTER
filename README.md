@@ -63,7 +63,9 @@ Thanks go out to all the guys who helped the developpment and those who will tes
 
 - Native A3S repositories (in progress)
   - First-class Repositories UI: add by autoconfig URL, Sync / Check / Cancel, exact-match (confirm)
-  - C# HTTP(S) addon download; classic `.a3s` metadata via hidden `a3s-metadata-bridge` (`IA3SMetadataStore`) — not a Setup “point at JAR” workflow (GPL-3.0)
+  - Phase 2 publish: Configure publish root / upload (HTTP(S) or SFTP), Build (C# walk + SHA-1), Publish (upload changed files + `.a3s/*`)
+  - C# HTTP(S) download + HTTP(S)/SFTP upload; classic `.a3s` metadata via hidden `a3s-metadata-bridge` (`IA3SMetadataStore`, `write --kind all`) — not a Setup “point at JAR” workflow (GPL-3.0)
+  - Deployment: “A3S Publish Root” uses Install Path as the selected repository’s publish main folder
 
 
 ##### **_ISSUES and FEEDBACK_**
