@@ -3,7 +3,9 @@
 Canonical contract: [Arma3Sync `docs/BRIDGE.md`](https://github.com/Reichel-Network/Arma3Sync/blob/master/docs/BRIDGE.md)
 (Phase 2 write shapes / `write --kind all`: companion [PR #2](https://github.com/Reichel-Network/Arma3Sync/pull/2)).
 
-Classic remote `.a3s/*` files are **GZIP’d Java `ObjectOutputStream`** graphs. FASTER never asks operators to configure a product JAR; this helper is an internal adapter behind `IA3SMetadataStore` / `BridgeA3SMetadataStore` until a C# ObjectStream serializer lands.
+Classic remote `.a3s/*` files are **GZIP’d Java `ObjectOutputStream`** graphs. FASTER never asks operators to configure a product JAR; this helper is an internal adapter behind `IA3SMetadataStore`.
+
+**Phase 4:** `SerializerA3SMetadataStore` reads those blobs natively in C#. Product default (`a3sPreferNativeSerializer`) prefers the serializer for **reads**; this bridge remains the **write** path and read fallback until native write lands. See `PHASE4.md`.
 
 ## Build (Arma3Sync companion)
 

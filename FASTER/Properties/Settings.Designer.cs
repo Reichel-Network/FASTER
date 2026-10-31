@@ -468,5 +468,20 @@ namespace FASTER.Properties {
                 this["a3sMetadataBridgePath"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool a3sPreferNativeSerializer
+        {
+            get
+            {
+                return ((bool)(this["a3sPreferNativeSerializer"]));
+            }
+            set
+            {
+                this["a3sPreferNativeSerializer"] = value;
+            }
+        }
     }
 }
