@@ -14,273 +14,280 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <models:NotBooleanToVisibilityConverter x:Key="BoolToHide" />
     </UserControl.Resources>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="140" />
-        </Grid.RowDefinitions>
+    <!-- Scroll when windowed/short so toolbar, list, panels, and log stay reachable -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  CanContentScroll="False">
+        <!-- MinHeight = viewport so * rows still stretch when there is space -->
+        <Grid MinHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="120" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="100" />
+            </Grid.RowDefinitions>
 
-        <DockPanel HorizontalAlignment="Stretch" Margin="10,10,5,5">
-            <DockPanel.Effect>
-                <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1" />
-            </DockPanel.Effect>
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="{iconPacks:Material Kind=Plus}" ToolTip="Add repository"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="7,5" Margin="0,0,5,0" Click="AddRepository_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="{iconPacks:Modern Kind=Delete}" ToolTip="Remove selected"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="7,5" Margin="0,0,5,0" Click="RemoveRepository_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="{iconPacks:Material Kind=Refresh}" ToolTip="Refresh from settings"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="7,5" Margin="0,0,5,0" Click="Refresh_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="{iconPacks:Material Kind=Cog}" ToolTip="Configure publish / upload"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="7,5" Margin="0,0,5,0" Click="Configure_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Separator Margin="5,0" Width="8" />
-                <Button Content="Check" ToolTip="Compare local files to remote sync metadata"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="Check_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Sync" ToolTip="Download missing/outdated addon files"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="Sync_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Build" ToolTip="Walk publish root, SHA-1, write .a3s via metadata bridge"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="Build_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Publish" ToolTip="Build then upload changed files + metadata (HTTP/SFTP)"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="Publish_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Cancel" ToolTip="Cancel running operation"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="Cancel_Click"
-                        IsEnabled="{Binding IsBusy}" />
-                <CheckBox Content="Exact match" Margin="10,0,0,0" VerticalAlignment="Center"
-                          IsChecked="{Binding ExactMatch}" ToolTip="Delete local files not in the remote tree (asks for confirm)"
-                          IsEnabled="{Binding CanStartWork}" />
-                <Separator Margin="5,0" Width="8" />
-                <Button Content="Events" ToolTip="Load A3S events (modsets) from repository metadata"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="LoadEvents_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Apply event" ToolTip="Map selected event addons onto the selected profile"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="ApplyEvent_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Sync → Deploy → Launch" ToolTip="One-click: sync repo, apply event, deploy, launch profile"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="SyncEventDeployLaunch_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-                <Button Content="Favorite → autoconfig" ToolTip="Write selected profile as favorite server into autoconfig"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,5" Margin="0,0,5,0" Click="WriteFavorite_Click"
-                        IsEnabled="{Binding CanStartWork}" />
-            </StackPanel>
-            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0"
-                       Text="{Binding StatusText}" Opacity="0.8" TextWrapping="Wrap" />
-        </DockPanel>
+            <DockPanel HorizontalAlignment="Stretch" Margin="10,10,5,5">
+                <DockPanel.Effect>
+                    <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1" />
+                </DockPanel.Effect>
+                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Top" Margin="10,0"
+                           Text="{Binding StatusText}" Opacity="0.8" TextWrapping="Wrap" MaxWidth="220" />
+                <!-- Wrap instead of single-row StackPanel so Sync→Deploy→Launch is not clipped -->
+                <WrapPanel Orientation="Horizontal">
+                    <Button Content="{iconPacks:Material Kind=Plus}" ToolTip="Add repository"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="7,5" Margin="0,0,5,5" Click="AddRepository_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="{iconPacks:Modern Kind=Delete}" ToolTip="Remove selected"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="7,5" Margin="0,0,5,5" Click="RemoveRepository_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="{iconPacks:Material Kind=Refresh}" ToolTip="Refresh from settings"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="7,5" Margin="0,0,5,5" Click="Refresh_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="{iconPacks:Material Kind=Cog}" ToolTip="Configure publish / upload"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="7,5" Margin="0,0,5,5" Click="Configure_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Separator Margin="5,0,5,5" Width="8" />
+                    <Button Content="Check" ToolTip="Compare local files to remote sync metadata"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="Check_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Sync" ToolTip="Download missing/outdated addon files"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="Sync_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Build" ToolTip="Walk publish root, SHA-1, write .a3s via metadata bridge"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="Build_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Publish" ToolTip="Build then upload changed files + metadata (HTTP/SFTP)"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="Publish_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Cancel" ToolTip="Cancel running operation"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="Cancel_Click"
+                            IsEnabled="{Binding IsBusy}" />
+                    <CheckBox Content="Exact match" Margin="10,0,0,5" VerticalAlignment="Center"
+                              IsChecked="{Binding ExactMatch}" ToolTip="Delete local files not in the remote tree (asks for confirm)"
+                              IsEnabled="{Binding CanStartWork}" />
+                    <Separator Margin="5,0,5,5" Width="8" />
+                    <Button Content="Events" ToolTip="Load A3S events (modsets) from repository metadata"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="LoadEvents_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Apply event" ToolTip="Map selected event addons onto the selected profile"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="ApplyEvent_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Sync → Deploy → Launch" ToolTip="One-click: sync repo, apply event, deploy, launch profile"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="SyncEventDeployLaunch_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                    <Button Content="Favorite → autoconfig" ToolTip="Write selected profile as favorite server into autoconfig"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,5" Margin="0,0,5,5" Click="WriteFavorite_Click"
+                            IsEnabled="{Binding CanStartWork}" />
+                </WrapPanel>
+            </DockPanel>
 
-        <Grid Grid.Row="1" Margin="10,5,10,5">
-            <DataGrid ItemsSource="{Binding Repositories}"
-                      SelectedItem="{Binding SelectedRepository, Mode=TwoWay}"
-                      CanUserReorderColumns="False" CanUserSortColumns="True" AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      Visibility="{Binding HasRepositories, Converter={StaticResource BoolToVis}}">
-                <DataGrid.Effect>
+            <Grid Grid.Row="1" Margin="10,5,10,5">
+                <DataGrid ItemsSource="{Binding Repositories}"
+                          SelectedItem="{Binding SelectedRepository, Mode=TwoWay}"
+                          CanUserReorderColumns="False" CanUserSortColumns="True" AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          Visibility="{Binding HasRepositories, Converter={StaticResource BoolToVis}}">
+                    <DataGrid.Effect>
+                        <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
+                    </DataGrid.Effect>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True" CanUserSort="True"/>
+                        <DataGridTextColumn Header="Autoconfig URL" Binding="{Binding AutoconfigUrl}" Width="2*" IsReadOnly="True" CanUserSort="False"/>
+                        <DataGridTextColumn Header="Local Path" Binding="{Binding LocalPath}" Width="*" IsReadOnly="True" CanUserSort="False"/>
+                        <DataGridTextColumn Header="Publish Root" Binding="{Binding PublishRoot}" Width="*" IsReadOnly="True" CanUserSort="False"/>
+                        <DataGridTextColumn Header="Revision" Binding="{Binding LastRevision}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
+                        <DataGridTextColumn Header="Upload" Binding="{Binding UploadProtocol}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
+                        <DataGridTextColumn Header="Last Check (UTC)" Binding="{Binding LastCheckUtc}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
+                        <DataGridTextColumn Header="Protocol" Binding="{Binding ProtocolHint}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding HasRepositories, Converter={StaticResource BoolToHide}}">
+                    <iconPacks:PackIconMaterial Kind="DatabaseOutline" Width="48" Height="48" HorizontalAlignment="Center" Opacity="0.5"/>
+                    <TextBlock Margin="0,12,0,4" FontSize="14" HorizontalAlignment="Center" Text="No A3S repositories yet"/>
+                    <TextBlock Opacity="0.7" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
+                               Text="Add a repository, Configure publish/upload, then Sync or Build / Publish from this page."/>
+                    <Button Margin="0,16,0,0" Content="Add repository" HorizontalAlignment="Center"
+                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                            Padding="12,6" Click="AddRepository_Click"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="2" Margin="10,0,10,5">
+                <Grid.Effect>
                     <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
-                </DataGrid.Effect>
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True" CanUserSort="True"/>
-                    <DataGridTextColumn Header="Autoconfig URL" Binding="{Binding AutoconfigUrl}" Width="2*" IsReadOnly="True" CanUserSort="False"/>
-                    <DataGridTextColumn Header="Local Path" Binding="{Binding LocalPath}" Width="*" IsReadOnly="True" CanUserSort="False"/>
-                    <DataGridTextColumn Header="Publish Root" Binding="{Binding PublishRoot}" Width="*" IsReadOnly="True" CanUserSort="False"/>
-                    <DataGridTextColumn Header="Revision" Binding="{Binding LastRevision}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
-                    <DataGridTextColumn Header="Upload" Binding="{Binding UploadProtocol}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
-                    <DataGridTextColumn Header="Last Check (UTC)" Binding="{Binding LastCheckUtc}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
-                    <DataGridTextColumn Header="Protocol" Binding="{Binding ProtocolHint}" Width="Auto" IsReadOnly="True" CanUserSort="True"/>
-                </DataGrid.Columns>
-            </DataGrid>
-
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                        Visibility="{Binding HasRepositories, Converter={StaticResource BoolToHide}}">
-                <iconPacks:PackIconMaterial Kind="DatabaseOutline" Width="48" Height="48" HorizontalAlignment="Center" Opacity="0.5"/>
-                <TextBlock Margin="0,12,0,4" FontSize="14" HorizontalAlignment="Center" Text="No A3S repositories yet"/>
-                <TextBlock Opacity="0.7" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
-                           Text="Add a repository, Configure publish/upload, then Sync or Build / Publish from this page."/>
-                <Button Margin="0,16,0,0" Content="Add repository" HorizontalAlignment="Center"
-                        Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                        Padding="12,6" Click="AddRepository_Click"/>
-            </StackPanel>
-        </Grid>
-
-        <Grid Grid.Row="2" Margin="10,0,10,5">
-            <Grid.Effect>
-                <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
-            </Grid.Effect>
-            <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <ComboBox Grid.Column="0" Margin="0,0,5,0"
-                              ItemsSource="{Binding Events}"
-                              SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
-                              DisplayMemberPath="Name"
-                              mah:TextBoxHelper.Watermark="A3S event (modset)"
-                              ToolTip="Events loaded from .a3s/events via IA3SMetadataStore"/>
-                    <ComboBox Grid.Column="1" Margin="0,0,5,0"
-                              ItemsSource="{Binding Profiles}"
-                              SelectedItem="{Binding SelectedProfileForEvent, Mode=TwoWay}"
-                              DisplayMemberPath="Name"
-                              mah:TextBoxHelper.Watermark="Server profile"
-                              ToolTip="Profile to receive event addon lists / launch target"/>
-                    <CheckBox Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center"
-                              Content="Client" IsChecked="{Binding ApplyEventClient}"
-                              ToolTip="Apply event addons to client-side mod list"/>
-                    <CheckBox Grid.Column="3" Margin="0,0,8,0" VerticalAlignment="Center"
-                              Content="Server" IsChecked="{Binding ApplyEventServer}"
-                              ToolTip="Apply event addons to server-side mod list"/>
-                    <CheckBox Grid.Column="4" Margin="0,0,8,0" VerticalAlignment="Center"
-                              Content="HC" IsChecked="{Binding ApplyEventHeadless}"
-                              ToolTip="Apply event addons to headless client mod list"/>
-                    <TextBlock Grid.Column="5" VerticalAlignment="Center" Opacity="0.75" TextWrapping="Wrap"
-                               Text="{Binding SelectedEvent.Description}"/>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <Grid Grid.Row="3" Margin="10,0,10,5"
-              Visibility="{Binding IsAddPanelOpen, Converter={StaticResource BoolToVis}}">
-            <Grid.Effect>
-                <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
-            </Grid.Effect>
-            <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="2*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0" Margin="0,0,5,0"
-                             Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.UseFloatingWatermark="True"
-                             mah:TextBoxHelper.Watermark="Repository name"/>
-                    <TextBox Grid.Column="1" Margin="0,0,5,0"
-                             Text="{Binding NewAutoconfigUrl, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.UseFloatingWatermark="True"
-                             mah:TextBoxHelper.Watermark="Autoconfig URL (…/.a3s/autoconfig)"/>
-                    <TextBox Grid.Column="2" Margin="0,0,5,0"
-                             Text="{Binding NewLocalPath, UpdateSourceTrigger=PropertyChanged}"
-                             mah:TextBoxHelper.UseFloatingWatermark="True"
-                             mah:TextBoxHelper.Watermark="Local sync path"/>
-                    <Button Grid.Column="3" Content="Save" Margin="0,0,5,0" Padding="12,0"
-                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                            Click="SaveAdd_Click"/>
-                    <Button Grid.Column="4" Content="Cancel" Padding="12,0"
-                            Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                            Click="CancelAdd_Click"/>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <Grid Grid.Row="4" Margin="10,0,10,5"
-              Visibility="{Binding IsConfigPanelOpen, Converter={StaticResource BoolToVis}}">
-            <Grid.Effect>
-                <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
-            </Grid.Effect>
-            <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Margin="0,0,0,8" Opacity="0.8" TextWrapping="Wrap"
-                               Text="Publish settings (FASTER-owned). Build walks Publish Root / Deployment InstallPath; upload uses HTTP(S) PUT or SFTP."/>
-                    <Grid Grid.Row="1">
+                </Grid.Effect>
+                <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="8">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" Margin="0,0,5,0"
+                                  ItemsSource="{Binding Events}"
+                                  SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                                  DisplayMemberPath="Name"
+                                  mah:TextBoxHelper.Watermark="A3S event (modset)"
+                                  ToolTip="Events loaded from .a3s/events via IA3SMetadataStore"/>
+                        <ComboBox Grid.Column="1" Margin="0,0,5,0"
+                                  ItemsSource="{Binding Profiles}"
+                                  SelectedItem="{Binding SelectedProfileForEvent, Mode=TwoWay}"
+                                  DisplayMemberPath="Name"
+                                  mah:TextBoxHelper.Watermark="Server profile"
+                                  ToolTip="Profile to receive event addon lists / launch target"/>
+                        <CheckBox Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center"
+                                  Content="Client" IsChecked="{Binding ApplyEventClient}"
+                                  ToolTip="Apply event addons to client-side mod list"/>
+                        <CheckBox Grid.Column="3" Margin="0,0,8,0" VerticalAlignment="Center"
+                                  Content="Server" IsChecked="{Binding ApplyEventServer}"
+                                  ToolTip="Apply event addons to server-side mod list"/>
+                        <CheckBox Grid.Column="4" Margin="0,0,8,0" VerticalAlignment="Center"
+                                  Content="HC" IsChecked="{Binding ApplyEventHeadless}"
+                                  ToolTip="Apply event addons to headless client mod list"/>
+                        <TextBlock Grid.Column="5" VerticalAlignment="Center" Opacity="0.75" TextWrapping="Wrap"
+                                   Text="{Binding SelectedEvent.Description}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Grid Grid.Row="3" Margin="10,0,10,5"
+                  Visibility="{Binding IsAddPanelOpen, Converter={StaticResource BoolToVis}}">
+                <Grid.Effect>
+                    <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
+                </Grid.Effect>
+                <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBox Grid.Column="0" Margin="0,0,5,0"
-                                 Text="{Binding EditPublishRoot, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Publish root (empty = LocalPath)"/>
-                        <CheckBox Grid.Column="1" Margin="0,0,8,0" VerticalAlignment="Center"
-                                  Content="Use Deployment InstallPath"
-                                  IsChecked="{Binding EditUseDeploymentInstallPath}"/>
+                                 mah:TextBoxHelper.Watermark="Repository name"/>
+                        <TextBox Grid.Column="1" Margin="0,0,5,0"
+                                 Text="{Binding NewAutoconfigUrl, UpdateSourceTrigger=PropertyChanged}"
+                                 mah:TextBoxHelper.UseFloatingWatermark="True"
+                                 mah:TextBoxHelper.Watermark="Autoconfig URL (…/.a3s/autoconfig)"/>
                         <TextBox Grid.Column="2" Margin="0,0,5,0"
-                                 Text="{Binding EditUploadProtocol, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding NewLocalPath, UpdateSourceTrigger=PropertyChanged}"
                                  mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Upload protocol (HTTPS/SFTP)"/>
-                        <TextBox Grid.Column="3" Margin="0,0,5,0"
-                                 Text="{Binding EditUploadUrl, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Upload host[/path]"/>
-                        <TextBox Grid.Column="4" Margin="0,0,5,0"
-                                 Text="{Binding EditUploadPort, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Port"/>
-                        <TextBox Grid.Column="5" Margin="0,0,5,0"
-                                 Text="{Binding EditUploadLogin, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Login"/>
-                        <TextBox Grid.Column="6" Margin="0,0,5,0"
-                                 Text="{Binding EditUploadPassword, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Password"/>
-                        <TextBox Grid.Column="7" Width="70"
-                                 Text="{Binding EditNumberOfConnections, UpdateSourceTrigger=PropertyChanged}"
-                                 mah:TextBoxHelper.UseFloatingWatermark="True"
-                                 mah:TextBoxHelper.Watermark="Conns"/>
+                                 mah:TextBoxHelper.Watermark="Local sync path"/>
+                        <Button Grid.Column="3" Content="Save" Margin="0,0,5,0" Padding="12,0"
+                                Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                Click="SaveAdd_Click"/>
+                        <Button Grid.Column="4" Content="Cancel" Padding="12,0"
+                                Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                Click="CancelAdd_Click"/>
                     </Grid>
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Right">
-                        <Button Content="Use Deployment path" Margin="0,0,5,0" Padding="12,4"
-                                Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                                Click="UseDeploymentPath_Click"/>
-                        <Button Content="Save" Margin="0,0,5,0" Padding="12,4"
-                                Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                                Click="SaveConfig_Click"/>
-                        <Button Content="Cancel" Padding="12,4"
-                                Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
-                                Click="CancelConfig_Click"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
+            </Grid>
+
+            <Grid Grid.Row="4" Margin="10,0,10,5"
+                  Visibility="{Binding IsConfigPanelOpen, Converter={StaticResource BoolToVis}}">
+                <Grid.Effect>
+                    <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
+                </Grid.Effect>
+                <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Margin="0,0,0,8" Opacity="0.8" TextWrapping="Wrap"
+                                   Text="Publish settings (FASTER-owned). Build walks Publish Root / Deployment InstallPath; upload uses HTTP(S) PUT or SFTP."/>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Margin="0,0,5,0"
+                                     Text="{Binding EditPublishRoot, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Publish root (empty = LocalPath)"/>
+                            <CheckBox Grid.Column="1" Margin="0,0,8,0" VerticalAlignment="Center"
+                                      Content="Use Deployment InstallPath"
+                                      IsChecked="{Binding EditUseDeploymentInstallPath}"/>
+                            <TextBox Grid.Column="2" Margin="0,0,5,0"
+                                     Text="{Binding EditUploadProtocol, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Upload protocol (HTTPS/SFTP)"/>
+                            <TextBox Grid.Column="3" Margin="0,0,5,0"
+                                     Text="{Binding EditUploadUrl, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Upload host[/path]"/>
+                            <TextBox Grid.Column="4" Margin="0,0,5,0"
+                                     Text="{Binding EditUploadPort, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Port"/>
+                            <TextBox Grid.Column="5" Margin="0,0,5,0"
+                                     Text="{Binding EditUploadLogin, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Login"/>
+                            <TextBox Grid.Column="6" Margin="0,0,5,0"
+                                     Text="{Binding EditUploadPassword, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Password"/>
+                            <TextBox Grid.Column="7" Width="70"
+                                     Text="{Binding EditNumberOfConnections, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Conns"/>
+                        </Grid>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Right">
+                            <Button Content="Use Deployment path" Margin="0,0,5,0" Padding="12,4"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Click="UseDeploymentPath_Click"/>
+                            <Button Content="Save" Margin="0,0,5,0" Padding="12,4"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Click="SaveConfig_Click"/>
+                            <Button Content="Cancel" Padding="12,4"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Click="CancelConfig_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <ProgressBar Grid.Row="5" Margin="10,0,10,5" Height="6" Minimum="0" Maximum="100"
+                         Value="{Binding Progress}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+
+            <TextBox Grid.Row="6" Margin="10,5,10,10" IsReadOnly="True" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
+                     Text="{Binding Output, Mode=OneWay}"
+                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                     mah:TextBoxHelper.Watermark="Log"/>
         </Grid>
-
-        <ProgressBar Grid.Row="5" Margin="10,0,10,5" Height="6" Minimum="0" Maximum="100"
-                     Value="{Binding Progress}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
-
-        <TextBox Grid.Row="6" Margin="10,5,10,10" IsReadOnly="True" TextWrapping="Wrap"
-                 VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
-                 Text="{Binding Output, Mode=OneWay}"
-                 mah:TextBoxHelper.UseFloatingWatermark="True"
-                 mah:TextBoxHelper.Watermark="Log"/>
-    </Grid>
+    </ScrollViewer>
 </UserControl>
