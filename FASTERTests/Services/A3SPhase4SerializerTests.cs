@@ -110,17 +110,6 @@ namespace FASTERTests
         }
 
         [Test]
-        public void Serializer_Write_NotSupported()
-        {
-            var store = new SerializerA3SMetadataStore();
-            Assert.ThrowsAsync<NotSupportedException>(async () =>
-                await store.WriteAllAsync(ClassicFixtureRoot, new A3SMetadataWriteSet
-                {
-                    ServerInfo = new A3SServerInfo { Revision = 2 }
-                }));
-        }
-
-        [Test]
         public async Task PreferNative_UsesSerializer_ForLocalReads()
         {
             var native = new SerializerA3SMetadataStore();
@@ -130,20 +119,6 @@ namespace FASTERTests
             var info = await prefer.ReadServerInfoAsync(ClassicFixtureRoot);
             Assert.That(info.Revision, Is.EqualTo(1));
             Assert.That(prefer.LastReadBackend, Is.EqualTo("serializer"));
-        }
-
-        [Test]
-        public void PreferNative_Write_DelegatesToBridge_MissingJar()
-        {
-            var native = new SerializerA3SMetadataStore();
-            var bridge = new BridgeA3SMetadataStore(Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.jar"));
-            var prefer = new PreferNativeA3SMetadataStore(native, bridge);
-
-            Assert.ThrowsAsync<A3SBridgeNotFoundException>(async () =>
-                await prefer.WriteAllAsync(ClassicFixtureRoot, new A3SMetadataWriteSet
-                {
-                    ServerInfo = new A3SServerInfo { Revision = 2 }
-                }));
         }
 
         [Test]

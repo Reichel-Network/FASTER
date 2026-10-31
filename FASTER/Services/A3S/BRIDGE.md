@@ -5,7 +5,7 @@ Canonical contract: [Arma3Sync `docs/BRIDGE.md`](https://github.com/Reichel-Netw
 
 Classic remote `.a3s/*` files are **GZIP’d Java `ObjectOutputStream`** graphs. FASTER never asks operators to configure a product JAR; this helper is an internal adapter behind `IA3SMetadataStore`.
 
-**Phase 4:** `SerializerA3SMetadataStore` reads those blobs natively in C#. Product default (`a3sPreferNativeSerializer`) prefers the serializer for **reads**; this bridge remains the **write** path and read fallback until native write lands. See `PHASE4.md`.
+**Phase 4:** `SerializerA3SMetadataStore` reads **and writes** those blobs natively in C#. Product default (`a3sPreferNativeSerializer`) prefers the serializer; this bridge remains a **fallback** (and for sealed `*.a3s.repository` if needed). See `PHASE4.md`.
 
 ## Build (Arma3Sync companion)
 

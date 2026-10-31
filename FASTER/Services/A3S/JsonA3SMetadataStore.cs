@@ -209,11 +209,13 @@ namespace FASTER.Services.A3S
         private void MergeIntoAll(string root, string kind, object payload)
         {
             var allPath = Path.Combine(root, "all.json");
+            // DeepClone so we can attach into a new envelope — JsonNode rejects re-parenting.
             JsonObject filesNode;
-            if (File.Exists(allPath))
+            if (File.Exists(allPath)
+                && JsonNode.Parse(File.ReadAllText(allPath)) is JsonObject existing
+                && existing["files"] is JsonObject existingFiles)
             {
-                var existing = JsonNode.Parse(File.ReadAllText(allPath)) as JsonObject;
-                filesNode = existing?["files"] as JsonObject ?? new JsonObject();
+                filesNode = existingFiles.DeepClone().AsObject();
             }
             else
             {

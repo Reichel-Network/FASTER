@@ -7,30 +7,46 @@ using System.Threading.Tasks;
 namespace FASTER.Services.A3S
 {
     /// <summary>
-    /// Phase 4 composition: prefer <see cref="SerializerA3SMetadataStore"/> for classic ObjectStream reads;
-    /// keep <see cref="BridgeA3SMetadataStore"/> for writes and as optional read fallback.
+    /// Phase 4 composition: prefer <see cref="SerializerA3SMetadataStore"/> for classic ObjectStream
+    /// reads and writes; keep <see cref="BridgeA3SMetadataStore"/> as fallback.
+    /// Sealed <c>*.a3s.repository</c> remains bridge-only / undocumented for native.
     /// </summary>
     public sealed class PreferNativeA3SMetadataStore : IA3SMetadataStore
     {
         private readonly SerializerA3SMetadataStore _native;
         private readonly BridgeA3SMetadataStore _bridge;
-        private readonly bool _preferNativeReads;
-        private readonly bool _fallbackToBridgeOnReadError;
+        private readonly bool _fallbackToBridge;
 
         public PreferNativeA3SMetadataStore(
             SerializerA3SMetadataStore native,
             BridgeA3SMetadataStore bridge,
             bool preferNativeReads = true,
             bool fallbackToBridgeOnReadError = true)
+            : this(native, bridge, preferNativeReads, fallbackToBridgeOnReadError, preferNativeWrites: preferNativeReads)
+        {
+        }
+
+        public PreferNativeA3SMetadataStore(
+            SerializerA3SMetadataStore native,
+            BridgeA3SMetadataStore bridge,
+            bool preferNativeReads,
+            bool fallbackToBridgeOnReadError,
+            bool preferNativeWrites)
         {
             _native = native ?? throw new ArgumentNullException(nameof(native));
             _bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
-            _preferNativeReads = preferNativeReads;
-            _fallbackToBridgeOnReadError = fallbackToBridgeOnReadError;
+            PreferNativeReads = preferNativeReads;
+            PreferNativeWrites = preferNativeWrites;
+            _fallbackToBridge = fallbackToBridgeOnReadError;
         }
 
-        /// <summary>Which implementation handled the last successful read (for diagnostics/tests).</summary>
+        public bool PreferNativeReads { get; }
+        public bool PreferNativeWrites { get; }
+
+        /// <summary>Which implementation handled the last successful read/write (diagnostics/tests).</summary>
         public string? LastReadBackend { get; private set; }
+
+        public string? LastWriteBackend { get; private set; }
 
         /// <inheritdoc />
         public Task<A3SMetadataBundle> ReadAllAsync(string source, CancellationToken cancellationToken = default)
@@ -58,24 +74,59 @@ namespace FASTER.Services.A3S
 
         /// <inheritdoc />
         public Task WriteMetadataAsync(string contentRoot, string kind, object metadataPayload, CancellationToken cancellationToken = default)
-        {
-            // Native write is not ready — always bridge for classic ObjectStream publish.
-            LastReadBackend = null;
-            return _bridge.WriteMetadataAsync(contentRoot, kind, metadataPayload, cancellationToken);
-        }
+            => WriteWithPreferenceAsync(
+                () => _native.WriteMetadataAsync(contentRoot, kind, metadataPayload, cancellationToken),
+                () => _bridge.WriteMetadataAsync(contentRoot, kind, metadataPayload, cancellationToken));
 
         /// <inheritdoc />
         public Task WriteAllAsync(string contentRoot, A3SMetadataWriteSet files, CancellationToken cancellationToken = default)
+            => WriteWithPreferenceAsync(
+                () => _native.WriteAllAsync(contentRoot, files, cancellationToken),
+                () => _bridge.WriteAllAsync(contentRoot, files, cancellationToken));
+
+        private async Task WriteWithPreferenceAsync(Func<Task> nativeWrite, Func<Task> bridgeWrite)
         {
-            LastReadBackend = null;
-            return _bridge.WriteAllAsync(contentRoot, files, cancellationToken);
+            if (!PreferNativeWrites)
+            {
+                LastWriteBackend = "bridge";
+                await bridgeWrite().ConfigureAwait(false);
+                return;
+            }
+
+            try
+            {
+                await nativeWrite().ConfigureAwait(false);
+                LastWriteBackend = "serializer";
+            }
+            catch (Exception ex) when (_fallbackToBridge && IsFallbackCandidate(ex))
+            {
+                try
+                {
+                    await bridgeWrite().ConfigureAwait(false);
+                    LastWriteBackend = "bridge-fallback";
+                }
+                catch (A3SBridgeNotFoundException)
+                {
+                    throw new A3SBridgeException(
+                        "Native ObjectStream write failed and metadata bridge is unavailable. " +
+                        $"Native error: {ex.Message}",
+                        ex);
+                }
+                catch (A3SBridgeException)
+                {
+                    throw new A3SBridgeException(
+                        "Native ObjectStream write failed and bridge fallback also failed. " +
+                        $"Native error: {ex.Message}",
+                        ex);
+                }
+            }
         }
 
         private async Task<T> ReadWithPreferenceAsync<T>(
             Func<SerializerA3SMetadataStore, Task<T>> nativeRead,
             Func<Task<T>> bridgeRead)
         {
-            if (!_preferNativeReads)
+            if (!PreferNativeReads)
             {
                 LastReadBackend = "bridge";
                 return await bridgeRead().ConfigureAwait(false);
@@ -87,7 +138,7 @@ namespace FASTER.Services.A3S
                 LastReadBackend = "serializer";
                 return value;
             }
-            catch (Exception ex) when (_fallbackToBridgeOnReadError && IsFallbackCandidate(ex))
+            catch (Exception ex) when (_fallbackToBridge && IsFallbackCandidate(ex))
             {
                 try
                 {
@@ -97,7 +148,6 @@ namespace FASTER.Services.A3S
                 }
                 catch (A3SBridgeNotFoundException)
                 {
-                    // Surface the native failure — more actionable when no JRE/bridge is installed.
                     throw new A3SBridgeException(
                         "Native ObjectStream read failed and metadata bridge is unavailable. " +
                         $"Native error: {ex.Message}",
@@ -118,6 +168,8 @@ namespace FASTER.Services.A3S
                or NotSupportedException
                or IOException
                or HttpRequestException
-               or FormatException;
+               or FormatException
+               or InvalidOperationException
+               or ArgumentException;
     }
 }

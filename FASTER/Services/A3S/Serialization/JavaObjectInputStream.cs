@@ -530,9 +530,20 @@ namespace FASTER.Services.A3S.Serialization
     internal sealed class JavaObject
     {
         public JavaObject(string className) => ClassName = className;
+
+        public JavaObject(JavaClassDesc classDesc)
+        {
+            ClassDesc = classDesc ?? throw new ArgumentNullException(nameof(classDesc));
+            ClassName = classDesc.Name;
+        }
+
         public string ClassName { get; }
+        public JavaClassDesc? ClassDesc { get; set; }
         public Dictionary<string, object?> Fields { get; } = new(StringComparer.Ordinal);
         public List<object?>? CustomData { get; set; }
+
+        /// <summary>Optional custom <c>writeObject</c> body (writer); ends with TC_ENDBLOCKDATA automatically.</summary>
+        public Action<JavaObjectOutputStream>? WriteCustom { get; set; }
 
         public T? Get<T>(string name)
         {
@@ -552,7 +563,15 @@ namespace FASTER.Services.A3S.Serialization
             Name = name;
         }
 
+        public JavaEnum(JavaClassDesc classDesc, string name)
+        {
+            ClassDesc = classDesc ?? throw new ArgumentNullException(nameof(classDesc));
+            ClassName = classDesc.Name;
+            Name = name;
+        }
+
         public string ClassName { get; }
+        public JavaClassDesc? ClassDesc { get; set; }
         public string Name { get; set; }
     }
 }
