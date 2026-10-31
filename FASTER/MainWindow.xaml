@@ -17,7 +17,7 @@
     
     Title="FASTER" 
     Height="700" Width="1100"
-    MinHeight="700" MinWidth="1000"
+    MinHeight="520" MinWidth="900"
         
     ShowTitleBar="True"
     ShowIconOnTitleBar="True"
@@ -38,7 +38,7 @@
     <Grid x:Name="MainGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Name="IMenuColumn" Width="auto" MinWidth="150" MaxWidth="250"/>
-            <ColumnDefinition Width="4*" MinWidth="540"/>
+            <ColumnDefinition Width="4*" MinWidth="480"/>
         </Grid.ColumnDefinitions>
         <Grid Grid.Column="0">
             <Grid.RowDefinitions>
