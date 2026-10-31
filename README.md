@@ -61,11 +61,11 @@ Thanks go out to all the guys who helped the developpment and those who will tes
   - Reads local mods from server folder
   - Include additional folders to search
 
-- Native A3S repositories (in progress)
+- Native A3S repositories
   - First-class Repositories UI: add by autoconfig URL, Sync / Check / Cancel, exact-match (confirm)
-  - Phase 2 publish: Configure publish root / upload (HTTP(S) or SFTP), Build (C# walk + SHA-1), Publish (upload changed files + `.a3s/*`)
-  - Phase 3 events ↔ profiles: list A3S events, map addon sets onto Profile client/server/HC lists, optional favorite server → autoconfig, Sync event → Deploy → Launch (`a3sSyncBeforeLaunch` / profile attach)
-  - Phase 4: classic `.a3s` read/write via C# ObjectStream (`SerializerA3SMetadataStore`); Java `a3s-metadata-bridge` kept as fallback (`a3sPreferNativeSerializer`, default on) — not a Setup “point at JAR” workflow (GPL-3.0)
+  - Publish: Configure publish root / upload (HTTP(S) or SFTP), Build (C# walk + SHA-1), Publish (upload changed files + `.a3s/*`)
+  - Events ↔ profiles: map A3S events onto Profile mod lists; optional Sync event → Deploy → Launch
+  - Classic `.a3s` metadata read/write in **pure C#** (`SerializerA3SMetadataStore`) — **no Java/JRE required** for Sync/Build/Publish; optional Advanced bridge fallback only (`a3sEnableMetadataBridgeFallback`, default off). GPL-3.0
   - Deployment: “A3S Publish Root” uses Install Path as the selected repository’s publish main folder
 
 

@@ -5,10 +5,9 @@ namespace FASTER.Services.A3S
 {
     /// <summary>
     /// Sole boundary for classic <c>.a3s/*</c> metadata I/O (autoconfig, sync, serverinfo, changelogs, events).
-    /// Phase 4 default: <see cref="PreferNativeA3SMetadataStore"/> prefers
-    /// <see cref="SerializerA3SMetadataStore"/> for classic ObjectStream <b>reads</b>;
-    /// <see cref="BridgeA3SMetadataStore"/> remains for <b>writes</b> and optional read fallback
-    /// (JSON contract in BRIDGE.md / Arma3Sync docs/BRIDGE.md). No operator-facing JAR UX.
+    /// Product default: <see cref="SerializerA3SMetadataStore"/> (C# ObjectStream, no JRE).
+    /// Optional Advanced: <see cref="PreferNativeA3SMetadataStore"/> + <see cref="BridgeA3SMetadataStore"/>
+    /// when <c>a3sEnableMetadataBridgeFallback</c> is enabled. No operator-facing JAR UX.
     /// </summary>
     public interface IA3SMetadataStore
     {

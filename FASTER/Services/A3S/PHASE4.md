@@ -1,36 +1,61 @@
 # Phase 4 — C# ObjectStream metadata (option B)
 
+## Product default (no JRE)
+
+With defaults (`a3sPreferNativeSerializer=true`, `a3sEnableMetadataBridgeFallback=false`):
+
+- `A3SMetadataStoreFactory` returns **`SerializerA3SMetadataStore` only**
+- Sync / Check / Events / Build / Publish classic **unencrypted** `.a3s/*` needs **no Java**, no bridge JAR, no jlink
+- Proven against the reichel-arma golden fixtures (`FASTERTests/Fixtures/a3s-classic/`)
+
+Operators should not install a JRE for A3S. The Java helper is Advanced-only.
+
 ## What landed
 
 ### Phase 4a (read)
 
-- `SerializerA3SMetadataStore` — native GZIP Java `ObjectInputStream` reader for classic remote `.a3s/*`.
-- Supported **read** kinds: `autoconfig`, `sync`, `serverinfo`, `changelogs`, `events`.
-- Golden fixtures under `FASTERTests/Fixtures/a3s-classic/`.
+- Native GZIP Java `ObjectInputStream` reader for `autoconfig`, `sync`, `serverinfo`, `changelogs`, `events`
 
 ### Phase 4b (write)
 
-- `JavaObjectOutputStream` + `A3SObjectStreamWriter` — classic ObjectStream **write** for the same kinds.
-- `SerializerA3SMetadataStore.WriteMetadataAsync` / `WriteAllAsync` write GZIP blobs under `{contentRoot}/.a3s/`.
-- `PreferNativeA3SMetadataStore` prefers C# for **reads and writes** when `a3sPreferNativeSerializer` is true; Bridge remains fallback.
-- Golden round-trip tests: read fixture → write temp → read back (`A3SPhase4bWriteTests`).
+- Native `ObjectOutputStream` writer for the same kinds under `{contentRoot}/.a3s/`
+- Golden round-trip tests (`A3SPhase4bWriteTests`)
 
-## What still requires the JRE / bridge (“fully drop JRE”)
+### Packaging (this step)
 
-| Gap | Why it still needs the bridge |
+- Bridge **off by default** (`a3sEnableMetadataBridgeFallback=false`)
+- Settings → Advanced: optional “Enable Java bridge fallback” + JAR path
+- Releases need not ship `a3s-bridge/` or a JRE for A3S
+
+## Sealed `*.a3s.repository`
+
+Arma3Sync’s local encrypted repo definition files (`*.a3s.repository`, AES `SealedObject`) are **not used by FASTER**.
+
+| Concern | FASTER behavior |
 | --- | --- |
-| **Sealed `*.a3s.repository`** | Local AES `SealedObject` repo defs. FASTER settings remain source of truth; not required for Sync/Check/Build of community hosts. |
-| **Shadow-compare vs live hosts / Java oracle** | Broader community corpus + optional bridge read of C#-written blobs before deleting bundled jlink/JAR from releases. |
-| **Optional `.a3s2` (C)** | Still deferred. |
+| Repo list / URLs / publish settings | User settings (`a3sRepositories`, …) — **source of truth** |
+| Remote classic `.a3s/*` on hosts | Native C# ObjectStream read/write |
+| Sealed local Arma3Sync config | **Unused** — do not expect FASTER to create/read these |
+| If you ever need sealed files | Opt-in bridge fallback + JAR (not a product path) |
 
-## Cutover checklist before removing bundled JRE
+## Optional bridge fallback
 
-1. ~~Implement native write + round-trip fixtures~~ (4b).
-2. Build/Publish end-to-end on Windows against a real host with **no** bridge JAR (Advanced path empty / missing).
-3. Expand golden corpus; optional Java/bridge read of C#-written metadata.
-4. Flip release packaging: stop shipping `a3s-bridge/` + jlink; keep Advanced bridge path for emergency override only, then delete.
-5. Only then consider optional `.a3s2` dual-read.
+Enable only when diagnosing or forcing legacy bridge I/O:
+
+1. Settings → Advanced → **Enable Java bridge fallback**
+2. Point at `a3s-metadata-bridge-*-all.jar` (or leave empty for `a3s-bridge/` next to FASTER)
+3. Provide a JRE/JDK (`JAVA_HOME` / `PATH`)
+
+Uncheck native serializer entirely only to force bridge-for-all (emergency).
+
+## Remaining (non-blocking for daily use)
+
+| Item | Notes |
+| --- | --- |
+| Broader community corpus | Extra golden repos beyond reichel-arma |
+| Optional `.a3s2` (C) | Deferred; classic `.a3s` is the supported wire format |
+| Shipping bridge/jlink | **Not required**; omit from release zips unless you want the Advanced fallback pre-bundled |
 
 ## Operator note
 
-With `a3sPreferNativeSerializer` (default on), Sync/Check/Events/Build metadata I/O can run **without Java** for classic unencrypted `.a3s/*`. Bridge remains available as fallback and for sealed local repo files if ever needed.
+**Sync, Build, and Publish of classic `.a3s` repositories work without Java.** Point Repositories at an autoconfig URL (e.g. Tobias’s reichel-arma host), sync to a local folder, and build/publish with C# metadata I/O.

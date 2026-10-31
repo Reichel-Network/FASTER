@@ -483,5 +483,20 @@ namespace FASTER.Properties {
                 this["a3sPreferNativeSerializer"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool a3sEnableMetadataBridgeFallback
+        {
+            get
+            {
+                return ((bool)(this["a3sEnableMetadataBridgeFallback"]));
+            }
+            set
+            {
+                this["a3sEnableMetadataBridgeFallback"] = value;
+            }
+        }
     }
 }

@@ -23,9 +23,11 @@ namespace FASTER.Services.A3S
 
         public A3SBridgeNotFoundException(string resolvedPath)
             : base(
-                "A3S metadata bridge not found. Classic .a3s ObjectStream files require the headless bridge " +
-                $"(see FASTER/Services/A3S/BRIDGE.md). Resolved path: '{resolvedPath}'. " +
-                "Set Settings → Advanced → metadata bridge path, or bundle the companion binary next to FASTER.")
+                "A3S metadata bridge JAR was requested but not found at " +
+                $"'{resolvedPath}'. Classic Sync/Build/Publish normally use the native C# ObjectStream " +
+                "serializer (no Java). Enable Settings → Advanced → bridge fallback only if you need the " +
+                "optional Java helper, then set the bridge JAR path or place a3s-metadata-bridge-*-all.jar " +
+                "under a3s-bridge/ next to FASTER (see FASTER/Services/A3S/BRIDGE.md).")
         {
             ResolvedPath = resolvedPath;
         }

@@ -9,9 +9,8 @@ using FASTER.Services.A3S.Serialization;
 namespace FASTER.Services.A3S
 {
     /// <summary>
-    /// (B) Native C# reader for classic GZIP Java <c>ObjectOutputStream</c> <c>.a3s/*</c> blobs.
-    /// Read path covers autoconfig, sync, serverinfo, changelogs, and events.
-    /// Write path is not implemented yet — use <see cref="BridgeA3SMetadataStore"/> / <see cref="PreferNativeA3SMetadataStore"/>.
+    /// (B) Native C# reader/writer for classic GZIP Java <c>ObjectOutputStream</c> <c>.a3s/*</c> blobs
+    /// (autoconfig, sync, serverinfo, changelogs, events). Product default via <see cref="A3SMetadataStoreFactory"/>.
     /// </summary>
     public sealed class SerializerA3SMetadataStore : IA3SMetadataStore
     {
