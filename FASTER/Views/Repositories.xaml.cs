@@ -5,7 +5,7 @@ using System.Windows.Controls;
 namespace FASTER.Views
 {
     /// <summary>
-    /// Native A3S Repositories shell (Phase 0).
+    /// Native A3S Repositories (Phase 1 sync/check).
     /// </summary>
     public partial class Repositories : UserControl
     {
@@ -49,6 +49,23 @@ namespace FASTER.Views
         private void Refresh_Click(object sender, RoutedEventArgs e)
         {
             Vm?.RefreshFromSettings();
+        }
+
+        private async void Check_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.CheckSelectedAsync();
+        }
+
+        private async void Sync_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.SyncSelectedAsync();
+        }
+
+        private void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            Vm?.CancelWork();
         }
     }
 }

@@ -1,0 +1,123 @@
+{
+  "bridgeVersion": 1,
+  "kind": "all",
+  "files": {
+    "autoconfig": {
+      "repositoryName": "reichel-arma",
+      "protocol": {
+        "type": "HTTPS",
+        "url": "arma.game.reichel.network",
+        "port": "443",
+        "login": "anonymous",
+        "password": "",
+        "connectionTimeOut": "300000",
+        "readTimeOut": "300000",
+        "validateSSLCertificate": true
+      },
+      "favoriteServers": []
+    },
+    "serverinfo": {
+      "revision": 1,
+      "numberOfFiles": 451,
+      "totalFilesSize": 8266615271,
+      "numberOfConnections": 10,
+      "noPartialFileTransfer": false,
+      "compressedPboFilesOnly": false,
+      "repositoryContentUpdated": false,
+      "hiddenFolderPaths": [],
+      "buildDate": "2026-10-29T18:44:48.000Z"
+    },
+    "sync": {
+      "type": "directory",
+      "name": "racine",
+      "markAsAddon": false,
+      "updated": false,
+      "deleted": false,
+      "hidden": false,
+      "children": [
+        {
+          "type": "directory",
+          "name": "1779063631",
+          "markAsAddon": true,
+          "updated": false,
+          "deleted": false,
+          "hidden": false,
+          "children": [
+            {
+              "type": "leaf",
+              "name": "AUTHORS.txt",
+              "sha1": "ad920f24340ee9586686f50c8db62ab28aaf9c7a",
+              "size": 830,
+              "compressedSize": 0,
+              "compressed": false,
+              "updated": false,
+              "deleted": false
+            },
+            {
+              "type": "leaf",
+              "name": "LICENSE",
+              "sha1": "7713a1753ce88f2c7e6b054ecc8e4c786df76300",
+              "size": 35821,
+              "compressedSize": 0,
+              "compressed": false,
+              "updated": false,
+              "deleted": false
+            },
+            {
+              "type": "leaf",
+              "name": "logo_zen_ca.paa",
+              "sha1": "198eb1996efcb31b46a75a214a1b6533133ee8c8",
+              "size": 57883,
+              "compressedSize": 0,
+              "compressed": false,
+              "updated": false,
+              "deleted": false
+            }
+          ]
+        },
+        {
+          "type": "directory",
+          "name": "2034363662",
+          "markAsAddon": true,
+          "updated": false,
+          "deleted": false,
+          "hidden": false,
+          "children": [
+            {
+              "type": "leaf",
+              "name": "authors.txt",
+              "sha1": "4accf0dc8ace9d7ba72dfd1cc9dfbae16fa44a50",
+              "size": 165,
+              "compressedSize": 0,
+              "compressed": false,
+              "updated": false,
+              "deleted": false
+            },
+            {
+              "type": "leaf",
+              "name": "LICENSE",
+              "sha1": "6e9802e9451e15c4158918facc6445e0203d202c",
+              "size": 19587,
+              "compressedSize": 0,
+              "compressed": false,
+              "updated": false,
+              "deleted": false
+            },
+            {
+              "type": "leaf",
+              "name": "meta.cpp",
+              "sha1": "edb8e351877d1e2288904d7cb9ab7a41e0a90d58",
+              "size": 112,
+              "compressedSize": 0,
+              "compressed": false,
+              "updated": false,
+              "deleted": false
+            }
+          ]
+        }
+      ]
+    },
+    "changelogs": null,
+    "events": null
+  }
+}

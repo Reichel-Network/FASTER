@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 
 using FASTER.Models;
@@ -39,13 +40,14 @@ namespace FASTER.Services.Tests
         }
 
         [Test]
-        public void BridgeA3SMetadataStore_Stub_ThrowsNotImplemented()
+        public void BridgeA3SMetadataStore_MissingJar_ThrowsGracefully()
         {
-            IA3SMetadataStore store = new BridgeA3SMetadataStore();
-            Assert.ThrowsAsync<NotImplementedException>(async () => await store.ReadAutoconfigAsync("https://example/.a3s/autoconfig"));
-            Assert.ThrowsAsync<NotImplementedException>(async () => await store.ReadSyncTreeAsync("/tmp"));
-            Assert.ThrowsAsync<NotImplementedException>(async () => await store.ReadServerInfoAsync("/tmp"));
-            Assert.ThrowsAsync<NotImplementedException>(async () => await store.WriteMetadataAsync("/tmp", new object()));
+            IA3SMetadataStore store = new BridgeA3SMetadataStore(
+                Path.Combine(Path.GetTempPath(), $"no-bridge-{Guid.NewGuid():N}.jar"));
+            Assert.ThrowsAsync<A3SBridgeNotFoundException>(async () =>
+                await store.ReadAllAsync("https://example/.a3s/autoconfig"));
+            Assert.ThrowsAsync<NotImplementedException>(async () =>
+                await store.WriteMetadataAsync("/tmp", new object()));
         }
     }
 }

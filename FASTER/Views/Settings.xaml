@@ -96,13 +96,13 @@
                     <Expander Header="Advanced — metadata bridge" Margin="5,8,5,0" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0">
                             <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"
-                                       Text="Leave empty to use the bundled headless metadata helper when available. Operators do not need to install or point at an Arma3Sync JAR."/>
+                                       Text="Leave empty to use the bundled a3s-metadata-bridge-*-all.jar when available (java -jar). Operators do not need an Arma3Sync Setup/JAR workflow."/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition />
                                     <ColumnDefinition Width="auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="IA3SMetadataBridgePath" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="Metadata bridge path (optional)" Margin="0,0,5,0"/>
+                                <TextBox x:Name="IA3SMetadataBridgePath" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="a3s-metadata-bridge-*-all.jar (optional; empty = bundled)" Margin="0,0,5,0"/>
                                 <Button Grid.Column="1" Name="IA3SMetadataBridgePathButton" Content="{iconPacks:Modern Kind=Folder}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Padding="2" Click="A3SMetadataBridgePathButton_Click"/>
                             </Grid>
                         </StackPanel>
