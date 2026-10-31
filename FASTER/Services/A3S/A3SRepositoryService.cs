@@ -102,6 +102,69 @@ namespace FASTER.Services.A3S
             return Remove(repository.Id);
         }
 
+        /// <summary>
+        /// Update publish/upload configuration for an existing repository and persist.
+        /// FASTER settings remain source of truth (no sealed <c>*.a3s.repository</c> required).
+        /// </summary>
+        public A3SRepository ConfigurePublish(
+            A3SRepository repository,
+            string? publishRoot = null,
+            bool? useDeploymentInstallPath = null,
+            string? uploadProtocol = null,
+            string? uploadUrl = null,
+            string? uploadPort = null,
+            string? uploadLogin = null,
+            string? uploadPassword = null,
+            int? numberOfConnections = null,
+            string? autoconfigUrl = null,
+            string? localPath = null)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            EnsureCollection();
+
+            var existing = _settings.a3sRepositories.Repositories.FirstOrDefault(r => r.Id == repository.Id)
+                           ?? repository;
+
+            if (publishRoot != null)
+                existing.PublishRoot = publishRoot.Trim();
+            if (useDeploymentInstallPath.HasValue)
+                existing.UseDeploymentInstallPath = useDeploymentInstallPath.Value;
+            if (uploadProtocol != null)
+                existing.UploadProtocol = uploadProtocol.Trim();
+            if (uploadUrl != null)
+                existing.UploadUrl = uploadUrl.Trim();
+            if (uploadPort != null)
+                existing.UploadPort = uploadPort.Trim();
+            if (uploadLogin != null)
+                existing.UploadLogin = uploadLogin.Trim();
+            if (uploadPassword != null)
+                existing.UploadPassword = uploadPassword;
+            if (numberOfConnections.HasValue)
+                existing.NumberOfConnections = numberOfConnections.Value;
+            if (autoconfigUrl != null)
+                existing.AutoconfigUrl = autoconfigUrl.Trim();
+            if (localPath != null)
+                existing.LocalPath = localPath.Trim();
+
+            Persist();
+            return existing;
+        }
+
+        /// <summary>Apply Deployment InstallPath as this repository's publish root.</summary>
+        public A3SRepository UseDeploymentInstallPathAsPublishRoot(A3SRepository repository)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            var install = _settings.Deployments?.InstallPath;
+            if (string.IsNullOrWhiteSpace(install))
+                throw new InvalidOperationException("Deployment InstallPath is not set.");
+
+            return ConfigurePublish(
+                repository,
+                publishRoot: install,
+                useDeploymentInstallPath: true,
+                localPath: string.IsNullOrWhiteSpace(repository.LocalPath) ? install : null);
+        }
+
         /// <summary>Force settings write of the current collection.</summary>
         public void Persist()
         {

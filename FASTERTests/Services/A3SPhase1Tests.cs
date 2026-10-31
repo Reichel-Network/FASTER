@@ -75,11 +75,12 @@ namespace FASTER.Services.Tests
         }
 
         [Test]
-        public void BridgeA3SMetadataStore_Write_StillPhase2()
+        public void BridgeA3SMetadataStore_Write_MissingJar_ThrowsGracefully()
         {
-            var store = new BridgeA3SMetadataStore();
-            Assert.ThrowsAsync<NotImplementedException>(async () =>
-                await store.WriteMetadataAsync("/tmp", new object()));
+            var store = new BridgeA3SMetadataStore(Path.Combine(Path.GetTempPath(), $"missing-bridge-{Guid.NewGuid():N}.jar"));
+            var ex = Assert.ThrowsAsync<A3SBridgeNotFoundException>(async () =>
+                await store.WriteMetadataAsync("/tmp", "serverinfo", new A3SServerInfo { Revision = 1 }));
+            Assert.That(ex!.Message, Does.Contain("metadata bridge").IgnoreCase);
         }
 
         [Test]

@@ -37,6 +37,8 @@
             </Grid>
             <Separator Style="{StaticResource MahApps.Styles.Separator.StatusBar}"/>
             <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" Orientation="Horizontal" >
+                <Button Content="A3S Publish Root" ToolTip="Use this Install Path as the selected A3S repository publish root (Repositories → Build/Publish)"
+                        Click="A3SPublishRoot_Click" Margin="5, 0" Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"/>
                 <Button Content="Deploy All" Click="DeployAll_Click" Margin="5, 0" Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"/>
                 <Button Content="Clean" Click="ClearAll_Click" Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" Margin="5, 0" BorderThickness="0"/>
             </StackPanel>

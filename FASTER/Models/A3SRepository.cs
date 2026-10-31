@@ -46,6 +46,16 @@ namespace FASTER.Models
         private long _lastRevision;
         private DateTime? _lastCheckUtc;
         private string _protocolHint = string.Empty;
+        private string _publishRoot = string.Empty;
+        private bool _useDeploymentInstallPath;
+        private string _uploadProtocol = "HTTPS";
+        private string _uploadUrl = string.Empty;
+        private string _uploadPort = string.Empty;
+        private string _uploadLogin = string.Empty;
+        private string _uploadPassword = string.Empty;
+        private int _numberOfConnections = 4;
+        private DateTime? _lastBuildUtc;
+        private DateTime? _lastPublishUtc;
 
         public A3SRepository()
         {
@@ -137,6 +147,127 @@ namespace FASTER.Models
             {
                 _protocolHint = value ?? string.Empty;
                 RaisePropertyChanged(nameof(ProtocolHint));
+            }
+        }
+
+        /// <summary>
+        /// Dedicated publish content root. When empty, <see cref="LocalPath"/> is used
+        /// (or Deployment InstallPath when <see cref="UseDeploymentInstallPath"/> is set).
+        /// </summary>
+        [XmlElement(Order = 8)]
+        public string PublishRoot
+        {
+            get => _publishRoot;
+            set
+            {
+                _publishRoot = value ?? string.Empty;
+                RaisePropertyChanged(nameof(PublishRoot));
+            }
+        }
+
+        /// <summary>When true, resolve publish root from Settings.Deployments.InstallPath.</summary>
+        [XmlElement(Order = 9)]
+        public bool UseDeploymentInstallPath
+        {
+            get => _useDeploymentInstallPath;
+            set
+            {
+                _useDeploymentInstallPath = value;
+                RaisePropertyChanged(nameof(UseDeploymentInstallPath));
+            }
+        }
+
+        /// <summary>Upload protocol: HTTP, HTTPS, or SFTP (C# upload; not Arma3Sync GUI).</summary>
+        [XmlElement(Order = 10)]
+        public string UploadProtocol
+        {
+            get => _uploadProtocol;
+            set
+            {
+                _uploadProtocol = string.IsNullOrWhiteSpace(value) ? "HTTPS" : value.Trim();
+                RaisePropertyChanged(nameof(UploadProtocol));
+            }
+        }
+
+        /// <summary>
+        /// Upload host + optional remote path (Arma3Sync style, no scheme), e.g. <c>host.example/repo</c>.
+        /// Empty HTTP(S) upload falls back to the autoconfig content root.
+        /// </summary>
+        [XmlElement(Order = 11)]
+        public string UploadUrl
+        {
+            get => _uploadUrl;
+            set
+            {
+                _uploadUrl = value ?? string.Empty;
+                RaisePropertyChanged(nameof(UploadUrl));
+            }
+        }
+
+        [XmlElement(Order = 12)]
+        public string UploadPort
+        {
+            get => _uploadPort;
+            set
+            {
+                _uploadPort = value ?? string.Empty;
+                RaisePropertyChanged(nameof(UploadPort));
+            }
+        }
+
+        [XmlElement(Order = 13)]
+        public string UploadLogin
+        {
+            get => _uploadLogin;
+            set
+            {
+                _uploadLogin = value ?? string.Empty;
+                RaisePropertyChanged(nameof(UploadLogin));
+            }
+        }
+
+        /// <summary>Upload password stored in user settings (local machine scope).</summary>
+        [XmlElement(Order = 14)]
+        public string UploadPassword
+        {
+            get => _uploadPassword;
+            set
+            {
+                _uploadPassword = value ?? string.Empty;
+                RaisePropertyChanged(nameof(UploadPassword));
+            }
+        }
+
+        [XmlElement(Order = 15)]
+        public int NumberOfConnections
+        {
+            get => _numberOfConnections;
+            set
+            {
+                _numberOfConnections = value <= 0 ? 1 : value;
+                RaisePropertyChanged(nameof(NumberOfConnections));
+            }
+        }
+
+        [XmlElement(Order = 16)]
+        public DateTime? LastBuildUtc
+        {
+            get => _lastBuildUtc;
+            set
+            {
+                _lastBuildUtc = value;
+                RaisePropertyChanged(nameof(LastBuildUtc));
+            }
+        }
+
+        [XmlElement(Order = 17)]
+        public DateTime? LastPublishUtc
+        {
+            get => _lastPublishUtc;
+            set
+            {
+                _lastPublishUtc = value;
+                RaisePropertyChanged(nameof(LastPublishUtc));
             }
         }
 

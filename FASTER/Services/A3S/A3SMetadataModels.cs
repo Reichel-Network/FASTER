@@ -25,6 +25,9 @@ namespace FASTER.Services.A3S
 
         [JsonPropertyName("serverinfo")]
         public A3SServerInfo? ServerInfo { get; set; }
+
+        [JsonPropertyName("changelogs")]
+        public A3SChangelogs? Changelogs { get; set; }
     }
 
     public sealed class A3SBridgeFiles
@@ -37,14 +40,49 @@ namespace FASTER.Services.A3S
 
         [JsonPropertyName("serverinfo")]
         public A3SServerInfo? ServerInfo { get; set; }
+
+        [JsonPropertyName("changelogs")]
+        public A3SChangelogs? Changelogs { get; set; }
     }
 
-    /// <summary>Normalized bundle used by FASTER sync/check after a bridge read.</summary>
+    /// <summary>Normalized bundle used by FASTER sync/check/build after a bridge read.</summary>
     public sealed class A3SMetadataBundle
     {
         public A3SAutoconfigInfo Autoconfig { get; init; } = new();
         public A3SServerInfo ServerInfo { get; init; } = new();
         public A3SSyncTreeNode SyncRoot { get; init; } = new();
+        public A3SChangelogs? Changelogs { get; init; }
+    }
+
+    /// <summary>Parsed classic <c>.a3s/changelogs</c> (bridge JSON: <c>{ "list": [ … ] }</c>).</summary>
+    public sealed class A3SChangelogs
+    {
+        [JsonPropertyName("list")]
+        public List<A3SChangelogEntry> List { get; set; } = new();
+    }
+
+    public sealed class A3SChangelogEntry
+    {
+        [JsonPropertyName("revision")]
+        public int Revision { get; set; }
+
+        [JsonPropertyName("buildDate")]
+        public DateTime? BuildDate { get; set; }
+
+        [JsonPropertyName("contentUpdated")]
+        public bool ContentUpdated { get; set; }
+
+        [JsonPropertyName("newAddons")]
+        public List<string> NewAddons { get; set; } = new();
+
+        [JsonPropertyName("updatedAddons")]
+        public List<string> UpdatedAddons { get; set; } = new();
+
+        [JsonPropertyName("deletedAddons")]
+        public List<string> DeletedAddons { get; set; } = new();
+
+        [JsonPropertyName("addons")]
+        public List<string> Addons { get; set; } = new();
     }
 
     /// <summary>Parsed classic <c>.a3s/autoconfig</c> (bridge JSON contract).</summary>
@@ -272,5 +310,61 @@ namespace FASTER.Services.A3S
         /// Sync refuses exact-match deletes unless this is true.
         /// </summary>
         public bool ExactMatchConfirmed { get; init; }
+    }
+
+    public sealed class A3SBuildOptions
+    {
+        /// <summary>Override publish content root (otherwise resolved from repository settings).</summary>
+        public string? ContentRootOverride { get; init; }
+
+        /// <summary>Connections hint written into serverinfo / autoconfig.</summary>
+        public int? NumberOfConnections { get; init; }
+
+        /// <summary>When true, skip rewriting autoconfig (keep existing classic file if any).</summary>
+        public bool SkipAutoconfig { get; init; }
+    }
+
+    public sealed class A3SBuildResult
+    {
+        public string ContentRoot { get; init; } = string.Empty;
+        public long Revision { get; init; }
+        public int FileCount { get; init; }
+        public long TotalBytes { get; init; }
+        public int NewAddons { get; init; }
+        public int UpdatedAddons { get; init; }
+        public int DeletedAddons { get; init; }
+        public A3SSyncTreeNode SyncRoot { get; init; } = new();
+        public A3SServerInfo ServerInfo { get; init; } = new();
+        public A3SChangelogs Changelogs { get; init; } = new();
+    }
+
+    public sealed class A3SUploadOptions
+    {
+        /// <summary>When true, run <see cref="A3SBuildService.BuildAsync"/> before uploading.</summary>
+        public bool BuildFirst { get; init; } = true;
+
+        /// <summary>When true, upload every local sync leaf (ignore remote SHA-1 diff).</summary>
+        public bool ForceAllFiles { get; init; }
+    }
+
+    public sealed class A3SUploadResult
+    {
+        public long Revision { get; init; }
+        public int UploadedFiles { get; init; }
+        public int SkippedUnchanged { get; init; }
+        public int Failed { get; init; }
+        public int UploadedMetadataFiles { get; init; }
+        public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
+    }
+
+    /// <summary>Credentials / endpoint for C# upload (HTTP PUT or SFTP).</summary>
+    public sealed class A3SUploadEndpoint
+    {
+        public string Protocol { get; init; } = "HTTPS";
+        public string HostAndPath { get; init; } = string.Empty;
+        public string Port { get; init; } = string.Empty;
+        public string Login { get; init; } = string.Empty;
+        public string Password { get; init; } = string.Empty;
+        public Uri ContentRoot { get; init; } = new("https://localhost/");
     }
 }

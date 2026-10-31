@@ -1,6 +1,7 @@
 # a3s-metadata-bridge (FASTER wiring)
 
-Canonical contract: [Arma3Sync `docs/BRIDGE.md`](https://github.com/Reichel-Network/Arma3Sync/blob/cursor/a3s-headless-metadata-bridge-686c/docs/BRIDGE.md) (companion PR).
+Canonical contract: [Arma3Sync `docs/BRIDGE.md`](https://github.com/Reichel-Network/Arma3Sync/blob/master/docs/BRIDGE.md)
+(Phase 2 write shapes / `write --kind all`: companion [PR #2](https://github.com/Reichel-Network/Arma3Sync/pull/2)).
 
 Classic remote `.a3s/*` files are **GZIP’d Java `ObjectOutputStream`** graphs. FASTER never asks operators to configure a product JAR; this helper is an internal adapter behind `IA3SMetadataStore` / `BridgeA3SMetadataStore` until a C# ObjectStream serializer lands.
 
@@ -23,7 +24,8 @@ java -jar <a3s-metadata-bridge-*-all.jar> <command> [options]
 | --- | --- |
 | Import / refresh repo metadata | `read --source <autoconfigUrlOrContentRoot> --kind all --out -` |
 | Read one file | `read --source … --kind autoconfig\|sync\|serverinfo\|changelogs\|events --out -` |
-| Write one file after build | `write --target <contentRoot> --kind <kind> --in <jsonFile>` |
+| Write one file | `write --target <contentRoot> --kind <kind> --in <json\|->` |
+| **Phase 2 Build (preferred)** | `write --target <contentRoot> --kind all --in <files-envelope\|->` |
 | Mirror remote blobs locally | `copy --from <url> --to <contentRoot> --kind all` |
 
 `--source` / `--from` accept remote autoconfig URLs (`https://host/path/.a3s/autoconfig`), content roots, `.a3s/` dirs, or a single metadata file path.
@@ -35,7 +37,7 @@ java -jar <a3s-metadata-bridge-*-all.jar> <command> [options]
 | `0` | Success |
 | `1` | Usage / unknown command |
 | `2` | I/O, HTTP, missing file, deserialize failure |
-| `3` | JSON / domain mapping error |
+| `3` | JSON / domain mapping error (bad payload, unknown protocol, invalid dates) |
 
 ### Path resolution in FASTER
 
@@ -47,33 +49,52 @@ Missing JAR or `java` → `A3SBridgeNotFoundException` / `A3SBridgeException` (n
 
 ## JSON contract (`bridgeVersion: 1`)
 
-`kind=all` response (stdout when `--out -`):
+### Read / single-kind write
+
+```json
+{
+  "bridgeVersion": 1,
+  "kind": "serverinfo",
+  "serverinfo": { "revision": 12, "buildDate": "2026-10-29T18:44:48.000Z" }
+}
+```
+
+### Phase 2 multi-write (`write --kind all`) — used by `A3SBuildService`
 
 ```json
 {
   "bridgeVersion": 1,
   "kind": "all",
   "files": {
-    "autoconfig": { },
+    "autoconfig": { "repositoryName": "…", "protocol": { "type": "HTTPS", "url": "host", "port": "443", "login": "anonymous", "password": "" } },
     "sync": { "type": "directory", "name": "racine", "children": [ ] },
-    "serverinfo": { "revision": 1 },
-    "changelogs": { },
+    "serverinfo": { "revision": 2, "numberOfFiles": 10, "totalFilesSize": 123, "repositoryContentUpdated": true },
+    "changelogs": { "list": [ { "revision": 2, "contentUpdated": true, "newAddons": [], "updatedAddons": [], "deletedAddons": [], "addons": [] } ] },
     "events": null
   }
 }
 ```
 
-Sync nodes use `{ "type": "directory"|"leaf", "name", "children"?, "sha1"?, "size"?, "compressed"?, … }`. Parent links are omitted; FASTER rebuilds relative paths while walking.
+Null / omitted entries under `files` are skipped on write; at least one non-null file is required. Single-kind write also accepts a payload nested under `files.<kind>`.
+
+Sync nodes use `{ "type": "directory"|"leaf", "name", "children"?, "sha1"?, "size"?, "compressed"?, … }`. Parent links are omitted; FASTER rebuilds relative paths while walking. Addon folders are marked when they contain an `addons` child (Arma3Sync rule).
 
 ## FASTER ownership (not the bridge)
 
-- HTTP(S) download of addon trees: `A3SProtocolClient`
-- Sync/Check/cancel/progress UX: `A3SSyncService` + Repositories UI
-- Addon folders → `armaMods`: `A3SModImport`
+| Concern | Owner |
+| --- | --- |
+| Tree walk + SHA-1 + revision/changelogs | `A3SBuildService` |
+| Metadata I/O | `IA3SMetadataStore` → bridge `write --kind all` |
+| HTTP(S) PUT / SFTP upload of changed files + `.a3s/*` | `A3SProtocolClient` + `A3SPublishService` |
+| Sync/Check download UX | `A3SSyncService` + Repositories UI |
+| Repo defs (publish root, upload protocol/creds) | FASTER settings / `A3SRepository` |
 
-## Smoke / CI note
+## Publish smoke limits
 
-Public HTTP(S) metadata smoke (`https://arma.game.reichel.network/.a3s/autoconfig`) works with the companion bridge (rev 1, 451 files). Cloud/Linux CI for FASTER generally cannot run the WPF UI or bundle JDK 25 + the JAR; unit tests use bridge-shaped JSON fixtures via `JsonA3SMetadataStore`. Full Sync against Tobias’s repo is a Windows + JDK 25 + bridge JAR manual test (`E:\ArmaSync\Mods\reichel_arma`).
+- Public HTTP(S) **read** of `https://arma.game.reichel.network/.a3s/autoconfig` works with the companion bridge.
+- Cloud/Linux CI cannot run WPF UI, JDK 25 + bridge JAR write against Tobias’s hosts, or live SFTP/HTTP PUT to private endpoints.
+- Unit tests cover walk/SHA-1, `WriteAll` envelope via `JsonA3SMetadataStore`, HTTP PUT upload stubs, and publish orchestration with a stub handler.
+- Full Build → Publish against a real host needs Windows + JDK 25 + bridge JAR (PR #2+) + upload credentials (`Repositories` → Configure).
 
 ## License
 

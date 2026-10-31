@@ -13,7 +13,7 @@ using FASTER.Services.A3S;
 namespace FASTER.ViewModel
 {
     /// <summary>
-    /// Native A3S Repositories (Phase 1): add/remove + Sync/Check/Cancel with Updater-like busy/log.
+    /// Native A3S Repositories (Phase 1 sync + Phase 2 Build/Publish) with Updater-like busy/log.
     /// </summary>
     public class RepositoriesViewModel : INotifyPropertyChanged
     {
@@ -21,17 +21,28 @@ namespace FASTER.ViewModel
         private readonly IA3SMetadataStore _metadataStore;
         private readonly A3SProtocolClient _protocolClient;
         private readonly A3SSyncService _syncService;
+        private readonly A3SBuildService _buildService;
+        private readonly A3SPublishService _publishService;
         private readonly A3SModImport _modImport;
 
         private A3SRepository? _selectedRepository;
         private string _newName = string.Empty;
         private string _newAutoconfigUrl = string.Empty;
         private string _newLocalPath = string.Empty;
+        private string _editPublishRoot = string.Empty;
+        private bool _editUseDeploymentInstallPath;
+        private string _editUploadProtocol = "HTTPS";
+        private string _editUploadUrl = string.Empty;
+        private string _editUploadPort = string.Empty;
+        private string _editUploadLogin = string.Empty;
+        private string _editUploadPassword = string.Empty;
+        private string _editNumberOfConnections = "4";
         private bool _isBusy;
         private bool _exactMatch;
         private string _statusText = string.Empty;
         private string _output = string.Empty;
         private bool _isAddPanelOpen;
+        private bool _isConfigPanelOpen;
         private double _progress;
         private CancellationTokenSource? _cts;
 
@@ -46,6 +57,8 @@ namespace FASTER.ViewModel
                 new BridgeA3SMetadataStore(Settings.Default.a3sMetadataBridgePath),
                 new A3SProtocolClient(),
                 null,
+                null,
+                null,
                 new A3SModImport())
         {
         }
@@ -55,15 +68,19 @@ namespace FASTER.ViewModel
             IA3SMetadataStore metadataStore,
             A3SProtocolClient protocolClient,
             A3SSyncService? syncService,
+            A3SBuildService? buildService,
+            A3SPublishService? publishService,
             A3SModImport modImport)
         {
             _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
             _metadataStore = metadataStore ?? throw new ArgumentNullException(nameof(metadataStore));
             _protocolClient = protocolClient ?? throw new ArgumentNullException(nameof(protocolClient));
             _syncService = syncService ?? new A3SSyncService(_metadataStore, _protocolClient);
+            _buildService = buildService ?? new A3SBuildService(_metadataStore);
+            _publishService = publishService ?? new A3SPublishService(_metadataStore, _protocolClient, _buildService);
             _modImport = modImport ?? throw new ArgumentNullException(nameof(modImport));
             Repositories = _repositoryService.Repositories;
-            AppendLog("Repositories ready. Sync/Check use native C# download + IA3SMetadataStore bridge.");
+            AppendLog("Repositories ready. Sync/Check + Build/Publish use native C# + IA3SMetadataStore bridge.");
         }
 
         public ObservableCollection<A3SRepository> Repositories { get; private set; }
@@ -75,57 +92,93 @@ namespace FASTER.ViewModel
             {
                 _selectedRepository = value;
                 RaisePropertyChanged();
+                if (value != null && IsConfigPanelOpen)
+                    LoadConfigFromSelected();
             }
         }
 
         public string NewName
         {
             get => _newName;
-            set
-            {
-                _newName = value ?? string.Empty;
-                RaisePropertyChanged();
-            }
+            set { _newName = value ?? string.Empty; RaisePropertyChanged(); }
         }
 
         public string NewAutoconfigUrl
         {
             get => _newAutoconfigUrl;
-            set
-            {
-                _newAutoconfigUrl = value ?? string.Empty;
-                RaisePropertyChanged();
-            }
+            set { _newAutoconfigUrl = value ?? string.Empty; RaisePropertyChanged(); }
         }
 
         public string NewLocalPath
         {
             get => _newLocalPath;
-            set
-            {
-                _newLocalPath = value ?? string.Empty;
-                RaisePropertyChanged();
-            }
+            set { _newLocalPath = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public string EditPublishRoot
+        {
+            get => _editPublishRoot;
+            set { _editPublishRoot = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public bool EditUseDeploymentInstallPath
+        {
+            get => _editUseDeploymentInstallPath;
+            set { _editUseDeploymentInstallPath = value; RaisePropertyChanged(); }
+        }
+
+        public string EditUploadProtocol
+        {
+            get => _editUploadProtocol;
+            set { _editUploadProtocol = value ?? "HTTPS"; RaisePropertyChanged(); }
+        }
+
+        public string EditUploadUrl
+        {
+            get => _editUploadUrl;
+            set { _editUploadUrl = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public string EditUploadPort
+        {
+            get => _editUploadPort;
+            set { _editUploadPort = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public string EditUploadLogin
+        {
+            get => _editUploadLogin;
+            set { _editUploadLogin = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public string EditUploadPassword
+        {
+            get => _editUploadPassword;
+            set { _editUploadPassword = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public string EditNumberOfConnections
+        {
+            get => _editNumberOfConnections;
+            set { _editNumberOfConnections = value ?? "4"; RaisePropertyChanged(); }
         }
 
         public bool IsAddPanelOpen
         {
             get => _isAddPanelOpen;
-            set
-            {
-                _isAddPanelOpen = value;
-                RaisePropertyChanged();
-            }
+            set { _isAddPanelOpen = value; RaisePropertyChanged(); }
+        }
+
+        public bool IsConfigPanelOpen
+        {
+            get => _isConfigPanelOpen;
+            set { _isConfigPanelOpen = value; RaisePropertyChanged(); }
         }
 
         public bool ExactMatch
         {
             get => _exactMatch;
-            set
-            {
-                _exactMatch = value;
-                RaisePropertyChanged();
-            }
+            set { _exactMatch = value; RaisePropertyChanged(); }
         }
 
         public bool IsBusy
@@ -144,31 +197,19 @@ namespace FASTER.ViewModel
         public double Progress
         {
             get => _progress;
-            set
-            {
-                _progress = value;
-                RaisePropertyChanged();
-            }
+            set { _progress = value; RaisePropertyChanged(); }
         }
 
         public string StatusText
         {
             get => _statusText;
-            set
-            {
-                _statusText = value ?? string.Empty;
-                RaisePropertyChanged();
-            }
+            set { _statusText = value ?? string.Empty; RaisePropertyChanged(); }
         }
 
         public string Output
         {
             get => _output;
-            set
-            {
-                _output = value ?? string.Empty;
-                RaisePropertyChanged();
-            }
+            set { _output = value ?? string.Empty; RaisePropertyChanged(); }
         }
 
         public bool HasRepositories => Repositories.Count > 0;
@@ -193,6 +234,7 @@ namespace FASTER.ViewModel
             NewName = string.Empty;
             NewAutoconfigUrl = string.Empty;
             NewLocalPath = Settings.Default.a3sDefaultSyncPath ?? string.Empty;
+            IsConfigPanelOpen = false;
             IsAddPanelOpen = true;
         }
 
@@ -202,6 +244,94 @@ namespace FASTER.ViewModel
             NewName = string.Empty;
             NewAutoconfigUrl = string.Empty;
             NewLocalPath = string.Empty;
+        }
+
+        public void OpenConfigPanel()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository to configure.");
+                return;
+            }
+
+            IsAddPanelOpen = false;
+            LoadConfigFromSelected();
+            IsConfigPanelOpen = true;
+        }
+
+        public void CancelConfig()
+        {
+            IsConfigPanelOpen = false;
+        }
+
+        public bool SaveConfig()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository to configure.");
+                return false;
+            }
+
+            try
+            {
+                var connections = 4;
+                if (!string.IsNullOrWhiteSpace(EditNumberOfConnections)
+                    && (!int.TryParse(EditNumberOfConnections.Trim(), out connections) || connections < 1))
+                {
+                    throw new ArgumentException("Number of connections must be a positive integer.");
+                }
+
+                _repositoryService.ConfigurePublish(
+                    SelectedRepository,
+                    publishRoot: EditPublishRoot,
+                    useDeploymentInstallPath: EditUseDeploymentInstallPath,
+                    uploadProtocol: EditUploadProtocol,
+                    uploadUrl: EditUploadUrl,
+                    uploadPort: EditUploadPort,
+                    uploadLogin: EditUploadLogin,
+                    uploadPassword: EditUploadPassword,
+                    numberOfConnections: connections);
+
+                IsConfigPanelOpen = false;
+                StatusText = $"Configured \"{SelectedRepository.Name}\".";
+                AppendLog($"Configured publish settings for \"{SelectedRepository.Name}\" " +
+                          $"(protocol={SelectedRepository.UploadProtocol}, root={A3SBuildService.ResolvePublishRoot(SelectedRepository)}).");
+                DisplayMessage(StatusText);
+                RaisePropertyChanged(nameof(SelectedRepository));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                StatusText = ex.Message;
+                AppendLog($"Configure failed: {ex.Message}");
+                DisplayMessage(ex.Message);
+                return false;
+            }
+        }
+
+        public void UseDeploymentInstallPath()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            try
+            {
+                _repositoryService.UseDeploymentInstallPathAsPublishRoot(SelectedRepository);
+                LoadConfigFromSelected();
+                StatusText = $"Publish root set to Deployment InstallPath.";
+                AppendLog($"{SelectedRepository.Name}: publish root → {SelectedRepository.PublishRoot}");
+                DisplayMessage(StatusText);
+                RaisePropertyChanged(nameof(SelectedRepository));
+            }
+            catch (Exception ex)
+            {
+                StatusText = ex.Message;
+                AppendLog($"Use Deployment InstallPath failed: {ex.Message}");
+                DisplayMessage(ex.Message);
+            }
         }
 
         public bool AddRepository()
@@ -244,6 +374,7 @@ namespace FASTER.ViewModel
             if (_repositoryService.Remove(SelectedRepository))
             {
                 SelectedRepository = null;
+                IsConfigPanelOpen = false;
                 RaisePropertyChanged(nameof(HasRepositories));
                 StatusText = $"Removed \"{name}\".";
                 AppendLog($"Removed repository \"{name}\".");
@@ -258,7 +389,7 @@ namespace FASTER.ViewModel
 
         public async Task CheckSelectedAsync()
         {
-            if (!TryBeginWork(out var repo, out var token))
+            if (!TryBeginWork(out var repo, out var token, requireLocalPath: true))
                 return;
 
             try
@@ -295,7 +426,7 @@ namespace FASTER.ViewModel
 
         public async Task SyncSelectedAsync()
         {
-            if (!TryBeginWork(out var repo, out var token))
+            if (!TryBeginWork(out var repo, out var token, requireLocalPath: true))
                 return;
 
             var exact = ExactMatch;
@@ -374,6 +505,91 @@ namespace FASTER.ViewModel
             }
         }
 
+        public async Task BuildSelectedAsync()
+        {
+            if (!TryBeginWork(out var repo, out var token, requireLocalPath: false))
+                return;
+
+            try
+            {
+                var root = A3SBuildService.ResolvePublishRoot(repo);
+                StatusText = $"Building \"{repo.Name}\"…";
+                AppendLog($"Build started: {repo.Name} → {root}");
+                var progress = CreateProgress();
+                var result = await _buildService.BuildAsync(repo, progress: progress, cancellationToken: token)
+                    .ConfigureAwait(true);
+                _repositoryService.Persist();
+
+                AppendLog(
+                    $"Build complete: revision {result.Revision}, files {result.FileCount}, " +
+                    $"size ~{Functions.ParseFileSize(result.TotalBytes)}, " +
+                    $"addons +{result.NewAddons}/~{result.UpdatedAddons}/-{result.DeletedAddons}.");
+                StatusText = $"Built \"{repo.Name}\" — rev {result.Revision}.";
+                DisplayMessage(StatusText);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Build cancelled.";
+                AppendLog("Build cancelled.");
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Build failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                EndWork();
+            }
+        }
+
+        public async Task PublishSelectedAsync()
+        {
+            if (!TryBeginWork(out var repo, out var token, requireLocalPath: false))
+                return;
+
+            try
+            {
+                StatusText = $"Publishing \"{repo.Name}\"…";
+                AppendLog($"Publish started: {repo.Name} (upload={repo.UploadProtocol})");
+                var progress = CreateProgress();
+                var result = await _publishService.PublishAsync(
+                        repo,
+                        new A3SUploadOptions { BuildFirst = true },
+                        progress,
+                        token)
+                    .ConfigureAwait(true);
+
+                foreach (var err in result.Errors)
+                    AppendLog("  Error: " + err);
+
+                AppendLog(
+                    $"Publish complete: revision {result.Revision}, uploaded {result.UploadedFiles} file(s), " +
+                    $"metadata {result.UploadedMetadataFiles}, skipped {result.SkippedUnchanged}, failed {result.Failed}.");
+                _repositoryService.Persist();
+                StatusText = result.Failed > 0
+                    ? $"Publish finished with {result.Failed} failure(s) — rev {result.Revision}."
+                    : $"Published \"{repo.Name}\" — rev {result.Revision}.";
+                DisplayMessage(StatusText);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Publish cancelled.";
+                AppendLog("Publish cancelled.");
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Publish failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                EndWork();
+            }
+        }
+
         public void CancelWork()
         {
             try
@@ -388,7 +604,26 @@ namespace FASTER.ViewModel
             }
         }
 
-        private bool TryBeginWork(out A3SRepository repo, out CancellationToken token)
+        private void LoadConfigFromSelected()
+        {
+            if (SelectedRepository == null)
+                return;
+
+            EditPublishRoot = SelectedRepository.PublishRoot;
+            EditUseDeploymentInstallPath = SelectedRepository.UseDeploymentInstallPath;
+            EditUploadProtocol = string.IsNullOrWhiteSpace(SelectedRepository.UploadProtocol)
+                ? "HTTPS"
+                : SelectedRepository.UploadProtocol;
+            EditUploadUrl = SelectedRepository.UploadUrl;
+            EditUploadPort = SelectedRepository.UploadPort;
+            EditUploadLogin = SelectedRepository.UploadLogin;
+            EditUploadPassword = SelectedRepository.UploadPassword;
+            EditNumberOfConnections = SelectedRepository.NumberOfConnections <= 0
+                ? "4"
+                : SelectedRepository.NumberOfConnections.ToString();
+        }
+
+        private bool TryBeginWork(out A3SRepository repo, out CancellationToken token, bool requireLocalPath)
         {
             repo = null!;
             token = CancellationToken.None;
@@ -405,9 +640,11 @@ namespace FASTER.ViewModel
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(SelectedRepository.LocalPath))
+            if (requireLocalPath && string.IsNullOrWhiteSpace(SelectedRepository.LocalPath)
+                && string.IsNullOrWhiteSpace(SelectedRepository.PublishRoot)
+                && !SelectedRepository.UseDeploymentInstallPath)
             {
-                DisplayMessage("Set a local sync path for this repository (add again with a path, or edit settings).");
+                DisplayMessage("Set a local sync path for this repository (add again with a path, or Configure).");
                 return false;
             }
 

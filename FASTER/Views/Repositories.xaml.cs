@@ -5,7 +5,7 @@ using System.Windows.Controls;
 namespace FASTER.Views
 {
     /// <summary>
-    /// Native A3S Repositories (Phase 1 sync/check).
+    /// Native A3S Repositories (Phase 1 sync/check + Phase 2 Build/Publish).
     /// </summary>
     public partial class Repositories : UserControl
     {
@@ -41,6 +41,26 @@ namespace FASTER.Views
             Vm?.CancelAdd();
         }
 
+        private void Configure_Click(object sender, RoutedEventArgs e)
+        {
+            Vm?.OpenConfigPanel();
+        }
+
+        private void SaveConfig_Click(object sender, RoutedEventArgs e)
+        {
+            Vm?.SaveConfig();
+        }
+
+        private void CancelConfig_Click(object sender, RoutedEventArgs e)
+        {
+            Vm?.CancelConfig();
+        }
+
+        private void UseDeploymentPath_Click(object sender, RoutedEventArgs e)
+        {
+            Vm?.UseDeploymentInstallPath();
+        }
+
         private void RemoveRepository_Click(object sender, RoutedEventArgs e)
         {
             Vm?.RemoveSelected();
@@ -61,6 +81,18 @@ namespace FASTER.Views
         {
             if (Vm == null) return;
             await Vm.SyncSelectedAsync();
+        }
+
+        private async void Build_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.BuildSelectedAsync();
+        }
+
+        private async void Publish_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.PublishSelectedAsync();
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)

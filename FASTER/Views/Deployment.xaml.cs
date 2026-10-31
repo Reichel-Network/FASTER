@@ -56,5 +56,10 @@ namespace FASTER.Views
         {
             ((DeploymentViewModel)DataContext)?.ClearAll();
         }
+
+        private void A3SPublishRoot_Click(object sender, RoutedEventArgs e)
+        {
+            ((DeploymentViewModel)DataContext)?.SetAsA3SPublishRoot();
+        }
     }
 }
