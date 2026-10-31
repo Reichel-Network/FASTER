@@ -135,6 +135,7 @@ namespace FASTER.Views
             IAPIKeyBox.Text = Properties.Settings.Default?.SteamAPIKey ?? string.Empty;
             IA3SDefaultSyncPath.Text = Properties.Settings.Default?.a3sDefaultSyncPath ?? string.Empty;
             IA3SSyncBeforeLaunch.IsChecked = Properties.Settings.Default?.a3sSyncBeforeLaunch ?? false;
+            IA3SPreferNativeSerializer.IsChecked = Properties.Settings.Default?.a3sPreferNativeSerializer ?? true;
             IA3SMetadataBridgePath.Text = Properties.Settings.Default?.a3sMetadataBridgePath ?? string.Empty;
             Slider.Value = Properties.Settings.Default.CliWorkers;
             NumericUpDown.Value = Slider.Value;
@@ -183,6 +184,7 @@ namespace FASTER.Views
             Properties.Settings.Default.enableDebugLog = IEnableDebugLog.IsChecked ?? false;
             Properties.Settings.Default.a3sDefaultSyncPath = IA3SDefaultSyncPath.Text?.Trim() ?? string.Empty;
             Properties.Settings.Default.a3sSyncBeforeLaunch = IA3SSyncBeforeLaunch.IsChecked ?? false;
+            Properties.Settings.Default.a3sPreferNativeSerializer = IA3SPreferNativeSerializer.IsChecked ?? true;
             Properties.Settings.Default.a3sMetadataBridgePath = IA3SMetadataBridgePath.Text?.Trim() ?? string.Empty;
             Properties.Settings.Default.Save();
         }
@@ -190,6 +192,12 @@ namespace FASTER.Views
         private void IA3SSyncBeforeLaunch_Checked(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.a3sSyncBeforeLaunch = IA3SSyncBeforeLaunch.IsChecked ?? false;
+            Properties.Settings.Default.Save();
+        }
+
+        private void IA3SPreferNativeSerializer_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.a3sPreferNativeSerializer = IA3SPreferNativeSerializer.IsChecked ?? true;
             Properties.Settings.Default.Save();
         }
 

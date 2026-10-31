@@ -62,7 +62,7 @@ namespace FASTER.ViewModel
         public RepositoriesViewModel(A3SRepositoryService repositoryService)
             : this(
                 repositoryService,
-                new BridgeA3SMetadataStore(Settings.Default.a3sMetadataBridgePath),
+                A3SMetadataStoreFactory.CreateDefault(),
                 new A3SProtocolClient(),
                 null,
                 null,
@@ -94,7 +94,9 @@ namespace FASTER.ViewModel
             Repositories = _repositoryService.Repositories;
             Events = new ObservableCollection<A3SEventInfo>();
             Profiles = new ObservableCollection<ServerProfile>();
-            AppendLog("Repositories ready. Sync/Check + Build/Publish + Events use native C# + IA3SMetadataStore bridge.");
+            AppendLog(Settings.Default.a3sPreferNativeSerializer
+                ? "Repositories ready. Sync/Check + Events use C# ObjectStream metadata reads; Build/Publish writes still use the bridge."
+                : "Repositories ready. Sync/Check + Build/Publish + Events use native C# + IA3SMetadataStore Java bridge.");
         }
 
         public ObservableCollection<A3SRepository> Repositories { get; private set; }

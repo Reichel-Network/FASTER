@@ -24,7 +24,7 @@ namespace FASTER.Services.A3S
 
         public A3SEventService()
             : this(
-                new BridgeA3SMetadataStore(Settings.Default.a3sMetadataBridgePath),
+                A3SMetadataStoreFactory.CreateDefault(),
                 new A3SRepositoryService(),
                 null,
                 new A3SModImport(),
