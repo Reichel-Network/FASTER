@@ -232,7 +232,8 @@ namespace FASTER.Services.A3S
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var name = Path.GetFileName(entry);
-                if (string.Equals(name, A3SUrlHelpers.A3SFolderName, StringComparison.OrdinalIgnoreCase))
+                // Skip classic .a3s and FASTER fixture sidecar (.a3s-json); not publish content.
+                if (A3SUrlHelpers.IsMetadataSidecarDirectory(name))
                     continue;
 
                 if (Directory.Exists(entry))
@@ -265,11 +266,8 @@ namespace FASTER.Services.A3S
                 foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
                 {
                     var relative = Path.GetRelativePath(root, file);
-                    if (relative.StartsWith(A3SUrlHelpers.A3SFolderName + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(relative, A3SUrlHelpers.A3SFolderName, StringComparison.OrdinalIgnoreCase))
-                    {
+                    if (A3SUrlHelpers.IsUnderMetadataSidecar(relative))
                         continue;
-                    }
 
                     if (ShouldIncludeFile(Path.GetFileName(file)))
                         count++;
@@ -311,7 +309,7 @@ namespace FASTER.Services.A3S
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var name = Path.GetFileName(entry);
-                if (string.Equals(name, A3SUrlHelpers.A3SFolderName, StringComparison.OrdinalIgnoreCase))
+                if (A3SUrlHelpers.IsMetadataSidecarDirectory(name))
                     continue;
 
                 if (Directory.Exists(entry))

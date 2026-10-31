@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 using FASTER.Models;
 
@@ -9,6 +10,37 @@ namespace FASTER.Services.A3S
     {
         public const string AutoconfigSuffix = "/.a3s/autoconfig";
         public const string A3SFolderName = ".a3s";
+
+        /// <summary>
+        /// FASTER test / fixture JSON sidecar written by <c>JsonA3SMetadataStore</c>.
+        /// Not classic wire content — build walk must skip it the same way as <see cref="A3SFolderName"/>.
+        /// </summary>
+        public const string A3SJsonSidecarFolderName = ".a3s-json";
+
+        /// <summary>Directory names under a publish root that are metadata stores, not addon content.</summary>
+        public static bool IsMetadataSidecarDirectory(string? directoryName)
+        {
+            if (string.IsNullOrEmpty(directoryName))
+                return false;
+            return string.Equals(directoryName, A3SFolderName, StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(directoryName, A3SJsonSidecarFolderName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>True when a path relative to the publish root is under a metadata sidecar folder.</summary>
+        public static bool IsUnderMetadataSidecar(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath))
+                return false;
+
+            var normalized = relativePath.Replace('/', Path.DirectorySeparatorChar)
+                .Trim(Path.DirectorySeparatorChar);
+            if (IsMetadataSidecarDirectory(normalized))
+                return true;
+
+            var firstSep = normalized.IndexOf(Path.DirectorySeparatorChar);
+            var top = firstSep < 0 ? normalized : normalized[..firstSep];
+            return IsMetadataSidecarDirectory(top);
+        }
 
         /// <summary>
         /// Content root URI for addon downloads: strip trailing <c>/.a3s/autoconfig</c> from the autoconfig URL.

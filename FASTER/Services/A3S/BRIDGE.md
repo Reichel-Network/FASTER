@@ -79,6 +79,8 @@ Null / omitted entries under `files` are skipped on write; at least one non-null
 
 Sync nodes use `{ "type": "directory"|"leaf", "name", "children"?, "sha1"?, "size"?, "compressed"?, … }`. Parent links are omitted; FASTER rebuilds relative paths while walking. Addon folders are marked when they contain an `addons` child (Arma3Sync rule).
 
+Build walk skips metadata sidecars under the publish root: classic `.a3s/` and the FASTER fixture store `.a3s-json/` (used by `JsonA3SMetadataStore` in tests).
+
 ## FASTER ownership (not the bridge)
 
 | Concern | Owner |

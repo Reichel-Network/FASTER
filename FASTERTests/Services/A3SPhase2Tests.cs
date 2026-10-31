@@ -73,6 +73,8 @@ namespace FASTER.Services.Tests
             await File.WriteAllBytesAsync(file, payload);
             Directory.CreateDirectory(Path.Combine(root, ".a3s"));
             await File.WriteAllTextAsync(Path.Combine(root, ".a3s", "sync"), "ignore-me");
+            Directory.CreateDirectory(Path.Combine(root, ".a3s-json"));
+            await File.WriteAllTextAsync(Path.Combine(root, ".a3s-json", "all.json"), "{\"bridgeVersion\":1}");
             await File.WriteAllTextAsync(Path.Combine(root, "@mod", "addons", "mod.pbo.zsync"), "skip");
 
             try
@@ -89,6 +91,15 @@ namespace FASTER.Services.Tests
             {
                 try { Directory.Delete(root, true); } catch { /* ignore */ }
             }
+        }
+
+        [Test]
+        public void IsMetadataSidecarDirectory_SkipsA3sAndJsonStore()
+        {
+            Assert.That(A3SUrlHelpers.IsMetadataSidecarDirectory(".a3s"), Is.True);
+            Assert.That(A3SUrlHelpers.IsMetadataSidecarDirectory(".a3s-json"), Is.True);
+            Assert.That(A3SUrlHelpers.IsUnderMetadataSidecar(".a3s-json/all.json"), Is.True);
+            Assert.That(A3SUrlHelpers.IsUnderMetadataSidecar("@mod/addons/x.pbo"), Is.False);
         }
 
         [Test]
