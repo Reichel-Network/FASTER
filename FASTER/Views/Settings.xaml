@@ -93,7 +93,7 @@
                         <Button Grid.Column="1" Name="IA3SDefaultSyncPathButton" Content="{iconPacks:Modern Kind=Folder}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Padding="2" Click="A3SDefaultSyncPathButton_Click"/>
                     </Grid>
                     <CheckBox Name="IA3SSyncBeforeLaunch" Content="Sync A3S repository before profile launch" Margin="5,8,5,4" Click="IA3SSyncBeforeLaunch_Checked"/>
-                    <CheckBox Name="IA3SPreferNativeSerializer" Content="Prefer native C# ObjectStream metadata reader (bridge fallback)" Margin="5,4,5,4" Click="IA3SPreferNativeSerializer_Checked"/>
+                    <CheckBox Name="IA3SPreferNativeSerializer" Content="Prefer native C# ObjectStream metadata (read/write; bridge fallback)" Margin="5,4,5,4" Click="IA3SPreferNativeSerializer_Checked"/>
                     <Expander Header="Advanced — metadata bridge" Margin="5,8,5,0" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0">
                             <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"

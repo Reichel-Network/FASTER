@@ -95,7 +95,7 @@ namespace FASTER.ViewModel
             Events = new ObservableCollection<A3SEventInfo>();
             Profiles = new ObservableCollection<ServerProfile>();
             AppendLog(Settings.Default.a3sPreferNativeSerializer
-                ? "Repositories ready. Sync/Check + Events use C# ObjectStream metadata reads; Build/Publish writes still use the bridge."
+                ? "Repositories ready. Sync/Check/Events/Build metadata use C# ObjectStream (bridge fallback)."
                 : "Repositories ready. Sync/Check + Build/Publish + Events use native C# + IA3SMetadataStore Java bridge.");
         }
 

@@ -19,7 +19,8 @@ namespace FASTER.Services.A3S
                 native: new SerializerA3SMetadataStore(),
                 bridge: bridge,
                 preferNativeReads: true,
-                fallbackToBridgeOnReadError: true);
+                fallbackToBridgeOnReadError: true,
+                preferNativeWrites: true);
         }
     }
 }

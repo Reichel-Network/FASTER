@@ -115,15 +115,66 @@ namespace FASTER.Services.A3S
 
         /// <inheritdoc />
         public Task WriteMetadataAsync(string contentRoot, string kind, object metadataPayload, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException(
-                "SerializerA3SMetadataStore write path is not implemented yet (Phase 4 read-first). " +
-                "Use PreferNativeA3SMetadataStore / BridgeA3SMetadataStore for classic ObjectStream writes.");
+        {
+            if (string.IsNullOrWhiteSpace(contentRoot))
+                throw new ArgumentException("Content root is required.", nameof(contentRoot));
+            if (string.IsNullOrWhiteSpace(kind))
+                throw new ArgumentException("Metadata kind is required.", nameof(kind));
+            ArgumentNullException.ThrowIfNull(metadataPayload);
+
+            var normalized = kind.Trim().ToLowerInvariant();
+            if (normalized is "all")
+                throw new ArgumentException("Use WriteAllAsync for kind=all.", nameof(kind));
+
+            return Task.Run(() =>
+            {
+                var bytes = A3SObjectStreamWriter.WriteKind(normalized, metadataPayload);
+                WriteLocalKindBytes(contentRoot, normalized, bytes);
+            }, cancellationToken);
+        }
 
         /// <inheritdoc />
         public Task WriteAllAsync(string contentRoot, A3SMetadataWriteSet files, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException(
-                "SerializerA3SMetadataStore write path is not implemented yet (Phase 4 read-first). " +
-                "Use PreferNativeA3SMetadataStore / BridgeA3SMetadataStore for classic ObjectStream writes.");
+        {
+            if (string.IsNullOrWhiteSpace(contentRoot))
+                throw new ArgumentException("Content root is required.", nameof(contentRoot));
+            ArgumentNullException.ThrowIfNull(files);
+
+            return Task.Run(() =>
+            {
+                if (files.Autoconfig != null)
+                    WriteLocalKindBytes(contentRoot, A3SObjectStreamMapper.KindAutoconfig,
+                        A3SObjectStreamWriter.WriteAutoconfig(files.Autoconfig));
+                if (files.Sync != null)
+                    WriteLocalKindBytes(contentRoot, A3SObjectStreamMapper.KindSync,
+                        A3SObjectStreamWriter.WriteSyncTree(files.Sync));
+                if (files.ServerInfo != null)
+                    WriteLocalKindBytes(contentRoot, A3SObjectStreamMapper.KindServerInfo,
+                        A3SObjectStreamWriter.WriteServerInfo(files.ServerInfo));
+                if (files.Changelogs != null)
+                    WriteLocalKindBytes(contentRoot, A3SObjectStreamMapper.KindChangelogs,
+                        A3SObjectStreamWriter.WriteChangelogs(files.Changelogs));
+                if (files.Events != null)
+                    WriteLocalKindBytes(contentRoot, A3SObjectStreamMapper.KindEvents,
+                        A3SObjectStreamWriter.WriteEvents(files.Events));
+            }, cancellationToken);
+        }
+
+        private static void WriteLocalKindBytes(string contentRoot, string kind, byte[] bytes)
+        {
+            var root = Path.GetFullPath(contentRoot);
+            string a3sDir;
+            if (string.Equals(Path.GetFileName(root), A3SUrlHelpers.A3SFolderName, StringComparison.OrdinalIgnoreCase))
+                a3sDir = root;
+            else
+                a3sDir = Path.Combine(root, A3SUrlHelpers.A3SFolderName);
+
+            Directory.CreateDirectory(a3sDir);
+            var path = Path.Combine(a3sDir, kind);
+            var temp = path + ".tmp";
+            File.WriteAllBytes(temp, bytes);
+            File.Move(temp, path, overwrite: true);
+        }
 
         internal async Task<byte[]> ReadKindBytesAsync(string source, string kind, CancellationToken cancellationToken)
         {
