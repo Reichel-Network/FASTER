@@ -10,7 +10,7 @@ namespace FASTER.Services.A3S
 {
     /// <summary>
     /// Test / fixture metadata store that reads/writes bridge-shaped JSON envelopes
-    /// (not classic ObjectStream binaries). Product default remains <see cref="BridgeA3SMetadataStore"/>.
+    /// (not classic ObjectStream binaries). Product default is <see cref="SerializerA3SMetadataStore"/>.
     /// </summary>
     public sealed class JsonA3SMetadataStore : IA3SMetadataStore
     {

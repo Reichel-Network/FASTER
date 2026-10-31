@@ -93,17 +93,18 @@
                         <Button Grid.Column="1" Name="IA3SDefaultSyncPathButton" Content="{iconPacks:Modern Kind=Folder}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Padding="2" Click="A3SDefaultSyncPathButton_Click"/>
                     </Grid>
                     <CheckBox Name="IA3SSyncBeforeLaunch" Content="Sync A3S repository before profile launch" Margin="5,8,5,4" Click="IA3SSyncBeforeLaunch_Checked"/>
-                    <CheckBox Name="IA3SPreferNativeSerializer" Content="Prefer native C# ObjectStream metadata (read/write; bridge fallback)" Margin="5,4,5,4" Click="IA3SPreferNativeSerializer_Checked"/>
-                    <Expander Header="Advanced — metadata bridge" Margin="5,8,5,0" IsExpanded="False">
+                    <CheckBox Name="IA3SPreferNativeSerializer" Content="Use native C# ObjectStream for classic .a3s metadata (no Java required)" Margin="5,4,5,4" Click="IA3SPreferNativeSerializer_Checked"/>
+                    <Expander Header="Advanced — optional Java metadata bridge" Margin="5,8,5,0" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0">
                             <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"
-                                       Text="Leave empty to use the bundled a3s-metadata-bridge-*-all.jar when available (java -jar). Used for classic .a3s writes and as read fallback. Operators do not need an Arma3Sync Setup/JAR workflow."/>
+                                       Text="Not required for Sync, Check, Build, or Publish of classic unencrypted .a3s/* (native C#). Leave fallback off unless diagnosing. Sealed *.a3s.repository files are unused by FASTER (settings are source of truth)."/>
+                            <CheckBox Name="IA3SEnableMetadataBridgeFallback" Content="Enable Java bridge fallback (requires JRE + a3s-metadata-bridge JAR)" Margin="0,0,0,8" Click="IA3SEnableMetadataBridgeFallback_Checked"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition />
                                     <ColumnDefinition Width="auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="IA3SMetadataBridgePath" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="a3s-metadata-bridge-*-all.jar (optional; empty = bundled)" Margin="0,0,5,0"/>
+                                <TextBox x:Name="IA3SMetadataBridgePath" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="a3s-metadata-bridge-*-all.jar (optional; empty = a3s-bridge/ next to FASTER)" Margin="0,0,5,0"/>
                                 <Button Grid.Column="1" Name="IA3SMetadataBridgePathButton" Content="{iconPacks:Modern Kind=Folder}" Style="{DynamicResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" Padding="2" Click="A3SMetadataBridgePathButton_Click"/>
                             </Grid>
                         </StackPanel>
