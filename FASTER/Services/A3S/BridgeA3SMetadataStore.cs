@@ -145,6 +145,16 @@ namespace FASTER.Services.A3S
         }
 
         /// <inheritdoc />
+        public async Task<A3SEvents> ReadEventsAsync(string source, CancellationToken cancellationToken = default)
+        {
+            var envelope = await InvokeReadAsync(source, "events", cancellationToken).ConfigureAwait(false);
+            var events = envelope.Events ?? envelope.Files?.Events;
+            if (events == null)
+                throw new A3SBridgeException("Bridge response did not contain events.");
+            return events;
+        }
+
+        /// <inheritdoc />
         public Task WriteMetadataAsync(string contentRoot, string kind, object metadataPayload, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(contentRoot))
@@ -389,6 +399,7 @@ namespace FASTER.Services.A3S
             var sync = envelope.Sync ?? envelope.Files?.Sync;
             var serverInfo = envelope.ServerInfo ?? envelope.Files?.ServerInfo;
             var changelogs = envelope.Changelogs ?? envelope.Files?.Changelogs;
+            var events = envelope.Events ?? envelope.Files?.Events;
 
             if (requireAutoconfig && autoconfig == null)
                 throw new A3SBridgeException("Bridge response did not contain autoconfig.");
@@ -402,7 +413,8 @@ namespace FASTER.Services.A3S
                 Autoconfig = autoconfig ?? new A3SAutoconfigInfo(),
                 SyncRoot = sync ?? new A3SSyncTreeNode { Type = "directory", Name = "racine" },
                 ServerInfo = serverInfo ?? new A3SServerInfo(),
-                Changelogs = changelogs
+                Changelogs = changelogs,
+                Events = events
             };
         }
     }

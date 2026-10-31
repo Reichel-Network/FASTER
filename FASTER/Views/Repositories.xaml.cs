@@ -5,7 +5,7 @@ using System.Windows.Controls;
 namespace FASTER.Views
 {
     /// <summary>
-    /// Native A3S Repositories (Phase 1 sync/check + Phase 2 Build/Publish).
+    /// Native A3S Repositories (Phases 1–3: sync, build/publish, events ↔ profiles).
     /// </summary>
     public partial class Repositories : UserControl
     {
@@ -98,6 +98,29 @@ namespace FASTER.Views
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             Vm?.CancelWork();
+        }
+
+        private async void LoadEvents_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.LoadEventsAsync();
+        }
+
+        private void ApplyEvent_Click(object sender, RoutedEventArgs e)
+        {
+            Vm?.ApplySelectedEventToProfile();
+        }
+
+        private async void WriteFavorite_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.WriteFavoriteServerAsync();
+        }
+
+        private async void SyncEventDeployLaunch_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.SyncEventDeployLaunchAsync(launch: true);
         }
     }
 }

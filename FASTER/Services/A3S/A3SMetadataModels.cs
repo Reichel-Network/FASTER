@@ -28,6 +28,9 @@ namespace FASTER.Services.A3S
 
         [JsonPropertyName("changelogs")]
         public A3SChangelogs? Changelogs { get; set; }
+
+        [JsonPropertyName("events")]
+        public A3SEvents? Events { get; set; }
     }
 
     public sealed class A3SBridgeFiles
@@ -43,6 +46,9 @@ namespace FASTER.Services.A3S
 
         [JsonPropertyName("changelogs")]
         public A3SChangelogs? Changelogs { get; set; }
+
+        [JsonPropertyName("events")]
+        public A3SEvents? Events { get; set; }
     }
 
     /// <summary>Normalized bundle used by FASTER sync/check/build after a bridge read.</summary>
@@ -52,6 +58,7 @@ namespace FASTER.Services.A3S
         public A3SServerInfo ServerInfo { get; init; } = new();
         public A3SSyncTreeNode SyncRoot { get; init; } = new();
         public A3SChangelogs? Changelogs { get; init; }
+        public A3SEvents? Events { get; init; }
     }
 
     /// <summary>Parsed classic <c>.a3s/changelogs</c> (bridge JSON: <c>{ "list": [ … ] }</c>).</summary>
@@ -93,6 +100,65 @@ namespace FASTER.Services.A3S
 
         [JsonPropertyName("protocol")]
         public A3SProtocolInfo Protocol { get; set; } = new();
+
+        [JsonPropertyName("favoriteServers")]
+        public List<A3SFavoriteServer> FavoriteServers { get; set; } = new();
+    }
+
+    /// <summary>Favorite server entry inside classic autoconfig (clients import these).</summary>
+    public sealed class A3SFavoriteServer
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("ipAddress")]
+        public string IpAddress { get; set; } = string.Empty;
+
+        [JsonPropertyName("port")]
+        public int Port { get; set; } = 2302;
+
+        [JsonPropertyName("password")]
+        public string Password { get; set; } = string.Empty;
+
+        [JsonPropertyName("selected")]
+        public bool Selected { get; set; }
+
+        [JsonPropertyName("modsetName")]
+        public string ModsetName { get; set; } = string.Empty;
+
+        [JsonPropertyName("repositoryName")]
+        public string RepositoryName { get; set; } = string.Empty;
+    }
+
+    /// <summary>Parsed classic <c>.a3s/events</c> (bridge JSON: <c>{ "list": [ … ] }</c>).</summary>
+    public sealed class A3SEvents
+    {
+        [JsonPropertyName("list")]
+        public List<A3SEventInfo> List { get; set; } = new();
+    }
+
+    /// <summary>One A3S event (named modset) from repository metadata.</summary>
+    public sealed class A3SEventInfo
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = string.Empty;
+
+        /// <summary>Addon folder names → selected (keys often <c>@mod</c> or workshop folder ids).</summary>
+        [JsonPropertyName("addonNames")]
+        public Dictionary<string, bool> AddonNames { get; set; } = new();
+
+        [JsonPropertyName("dlcNames")]
+        public Dictionary<string, bool> DlcNames { get; set; } = new();
+
+        [JsonPropertyName("userconfigFolderNames")]
+        public Dictionary<string, bool> UserconfigFolderNames { get; set; } = new();
+
+        [JsonIgnore]
+        public IReadOnlyList<string> SelectedAddonNames =>
+            AddonNames.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
     }
 
     public sealed class A3SProtocolInfo

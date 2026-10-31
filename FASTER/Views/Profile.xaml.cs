@@ -23,7 +23,11 @@ namespace FASTER.Views
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            //Empty to avoid double loading for now
+            if (DataContext is ProfileViewModel vm)
+            {
+                IA3SSyncBeforeLaunch.IsChecked = vm.A3SSyncBeforeLaunch;
+                vm.RefreshA3SRepositories();
+            }
         }
 
         private void UserControl_Unloaded(object sender, RoutedEventArgs e)
@@ -135,9 +139,47 @@ namespace FASTER.Views
             ((ProfileViewModel) DataContext)?.DeleteProfile();
         }
 
-        private void LaunchServer(object sender, RoutedEventArgs e)
+        private async void LaunchServer(object sender, RoutedEventArgs e)
         {
-            ((ProfileViewModel) DataContext)?.LaunchServer();
+            if (DataContext is ProfileViewModel vm)
+                await vm.LaunchServer();
+        }
+
+        private async void ApplyA3SEvent_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ProfileViewModel vm)
+                await vm.ApplyAttachedA3SEventAsync();
+        }
+
+        private async void WriteA3SFavorite_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ProfileViewModel vm)
+                await vm.WriteA3SFavoriteServerAsync();
+        }
+
+        private async void SyncEventDeployLaunch_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ProfileViewModel vm)
+                await vm.SyncAttachedEventDeployLaunchAsync();
+        }
+
+        private async void RefreshA3SEvents_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ProfileViewModel vm)
+                await vm.RefreshA3SEventsAsync();
+        }
+
+        private async void A3SRepository_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is ProfileViewModel vm)
+                await vm.RefreshA3SEventsAsync();
+        }
+
+        private void A3SSyncBeforeLaunch_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ProfileViewModel vm || sender is not System.Windows.Controls.CheckBox box)
+                return;
+            vm.A3SSyncBeforeLaunch = box.IsChecked == true;
         }
 
         private void LaunchHCs(object sender, RoutedEventArgs e)

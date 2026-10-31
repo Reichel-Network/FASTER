@@ -58,6 +58,10 @@ namespace FASTER.Services.A3S
         /// <inheritdoc />
         public async Task<A3SAutoconfigInfo> ReadAutoconfigAsync(string source, CancellationToken cancellationToken = default)
         {
+            var fromWrite = await TryReadWrittenKindAsync(source, "autoconfig", cancellationToken).ConfigureAwait(false);
+            if (fromWrite?.Autoconfig != null || fromWrite?.Files?.Autoconfig != null)
+                return fromWrite.Autoconfig ?? fromWrite.Files!.Autoconfig!;
+
             var bundle = await ReadAllAsync(source, cancellationToken).ConfigureAwait(false);
             return bundle.Autoconfig;
         }
@@ -95,6 +99,18 @@ namespace FASTER.Services.A3S
 
             var envelope = await ReadEnvelopeAsync(source, "all", cancellationToken).ConfigureAwait(false);
             return envelope.Changelogs ?? envelope.Files?.Changelogs ?? new A3SChangelogs();
+        }
+
+        /// <inheritdoc />
+        public async Task<A3SEvents> ReadEventsAsync(string source, CancellationToken cancellationToken = default)
+        {
+            var fromWrite = await TryReadWrittenKindAsync(source, "events", cancellationToken).ConfigureAwait(false);
+            var events = fromWrite?.Events ?? fromWrite?.Files?.Events;
+            if (events != null)
+                return events;
+
+            var envelope = await ReadEnvelopeAsync(source, "all", cancellationToken).ConfigureAwait(false);
+            return envelope.Events ?? envelope.Files?.Events ?? new A3SEvents();
         }
 
         /// <inheritdoc />

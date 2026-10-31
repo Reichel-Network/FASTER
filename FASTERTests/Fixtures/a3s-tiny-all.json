@@ -118,6 +118,30 @@
       ]
     },
     "changelogs": null,
-    "events": null
+    "events": {
+      "list": [
+        {
+          "name": "Weekend ops",
+          "description": "Sample event for Phase 3 tests",
+          "addonNames": {
+            "1779063631": true,
+            "@ACE": true
+          },
+          "dlcNames": {
+            "gm": true
+          },
+          "userconfigFolderNames": {}
+        },
+        {
+          "name": "Training",
+          "description": "",
+          "addonNames": {
+            "2034363662": true
+          },
+          "dlcNames": {},
+          "userconfigFolderNames": {}
+        }
+      ]
+    }
   }
 }

@@ -982,6 +982,38 @@
             </StackPanel.Effect>
             <Button Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" Padding="7,5" ToolTip="Save Profile" Click="SaveProfile" Content="{iconPacks:Modern Kind=Save}"/>
             <Button Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" Padding="7,5" ToolTip="Launch Server" Click="LaunchServer" Content="{iconPacks:Modern Kind=ControlPlay}"/>
+            <Separator Margin="8,0" Width="8"/>
+            <ComboBox x:Name="IA3SRepositoryCombo" Width="160" Margin="0,0,5,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding A3SRepositories}"
+                      SelectedValue="{Binding Profile.A3SRepositoryId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      SelectedValuePath="Id"
+                      DisplayMemberPath="Name"
+                      mah:TextBoxHelper.Watermark="A3S repository"
+                      ToolTip="Attach A3S repository for events / sync-before-launch"
+                      SelectionChanged="A3SRepository_SelectionChanged"/>
+            <ComboBox Width="140" Margin="0,0,5,0" VerticalAlignment="Center"
+                      ItemsSource="{Binding A3SEventNames}"
+                      Text="{Binding Profile.A3SEventName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      IsEditable="True"
+                      mah:TextBoxHelper.Watermark="A3S event"
+                      ToolTip="Attached A3S event (modset) name"/>
+            <TextBox Width="110" Margin="0,0,5,0" VerticalAlignment="Center"
+                     Text="{Binding Profile.A3SPublicIp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                     mah:TextBoxHelper.Watermark="Public IP"
+                     ToolTip="Optional public IP for autoconfig favorite server"/>
+            <Button Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" Padding="7,5" Margin="0,0,5,0"
+                    ToolTip="Refresh A3S events from metadata" Click="RefreshA3SEvents_Click" Content="{iconPacks:Material Kind=Refresh}"/>
+            <Button Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" Padding="8,5" Margin="0,0,5,0"
+                    ToolTip="Apply attached A3S event addon set to this profile" Click="ApplyA3SEvent_Click" Content="Apply event"/>
+            <Button Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" Padding="8,5" Margin="0,0,5,0"
+                    ToolTip="Write this profile as a favorite server into repository autoconfig" Click="WriteA3SFavorite_Click" Content="Favorite → autoconfig"/>
+            <Button Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0" Padding="8,5" Margin="0,0,5,0"
+                    ToolTip="Sync attached event → Deploy → Launch" Click="SyncEventDeployLaunch_Click" Content="Sync → Deploy → Launch"/>
+            <CheckBox x:Name="IA3SSyncBeforeLaunch" Margin="8,0,0,0" VerticalAlignment="Center"
+                      Content="Sync A3S before launch"
+                      ToolTip="When set: sync attached event, deploy, then launch"
+                      Click="A3SSyncBeforeLaunch_Click"/>
         </StackPanel>
     </Grid>
 </UserControl>
