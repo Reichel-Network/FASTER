@@ -51,7 +51,8 @@ namespace FASTER.ViewModel
         private A3SEventInfo? _selectedEvent;
         private ServerProfile? _selectedProfileForEvent;
         private bool _applyEventClient = true;
-        private bool _applyEventServer = true;
+        // Default off: A3S event addons belong in -mod (Client), not -serverMod.
+        private bool _applyEventServer = false;
         private bool _applyEventHeadless = true;
 
         public RepositoriesViewModel()
