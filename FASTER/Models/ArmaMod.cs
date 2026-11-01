@@ -283,14 +283,64 @@ namespace FASTER.Models
                     break;
                 case UpdateState.Success:
                     Status = ArmaModStatus.UpToDate;
-                    var nx = DateTime.UnixEpoch;
-                    var ts = DateTime.UtcNow - nx;
-
-                    LocalLastUpdated = (ulong) ts.TotalSeconds;
+                    // Record the Steam revision we just fetched — not wall-clock.
+                    // Wall-clock LocalLastUpdated hid Workshop bumps whose time_updated
+                    // was still older than "now" at download completion.
+                    MarkLocalRevisionFromSteam();
                     break;
             }
 
             IsLoading = false;
+        }
+
+        /// <summary>
+        /// Persist the Workshop revision currently in <see cref="SteamLastUpdated"/> as the
+        /// revision we have on disk. Falls back to wall-clock only when Steam time is unknown.
+        /// </summary>
+        internal void MarkLocalRevisionFromSteam()
+        {
+            if (SteamLastUpdated > 0)
+            {
+                LocalLastUpdated = SteamLastUpdated;
+                return;
+            }
+
+            LocalLastUpdated = (ulong)(DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds;
+        }
+
+        /// <summary>
+        /// Whether staging should be refreshed from Steam Workshop.
+        /// Uses Steam <c>time_updated</c> as the revision id (not download wall-clock).
+        /// </summary>
+        public bool NeedsWorkshopDownload()
+        {
+            var hasContent = !string.IsNullOrWhiteSpace(Path)
+                             && Directory.Exists(Path)
+                             && Size > 0;
+            return IsWorkshopDownloadNeeded(IsLocal, Status, SteamLastUpdated, LocalLastUpdated, hasContent);
+        }
+
+        /// <summary>Pure detection helper (unit-tested).</summary>
+        public static bool IsWorkshopDownloadNeeded(
+            bool isLocal,
+            string status,
+            ulong steamLastUpdated,
+            ulong localLastUpdated,
+            bool hasStagingContent)
+        {
+            if (isLocal)
+                return false;
+            if (!hasStagingContent)
+                return true;
+            if (string.Equals(status, ArmaModStatus.NotComplete, StringComparison.Ordinal))
+                return true;
+            if (steamLastUpdated == 0)
+                return false;
+
+            // Canonical: LocalLastUpdated stores the Steam time_updated we last downloaded.
+            // Legacy wall-clock LocalLastUpdated almost never equals Steam time_updated, so
+            // inequality also migrates old settings by forcing one refresh.
+            return steamLastUpdated != localLastUpdated;
         }
 
         internal void UpdateInfos(bool checkFileSize = true)
@@ -337,11 +387,6 @@ namespace FASTER.Models
 
                 SteamLastUpdated = modDetails.time_updated;
                 Name = modDetails.title;
-
-                if (SteamLastUpdated > LocalLastUpdated && Status != ArmaModStatus.NotComplete)
-                    Status = ArmaModStatus.UpdateRequired;
-                else if (Status != ArmaModStatus.NotComplete)
-                    Status = ArmaModStatus.UpToDate;
                 success = true;
             } while (failNum < 3 && !success);
 
@@ -353,6 +398,14 @@ namespace FASTER.Models
 
             if (checkFileSize)
                 CheckModSize();
+
+            if (success)
+            {
+                if (NeedsWorkshopDownload())
+                    Status = ArmaModStatus.UpdateRequired;
+                else
+                    Status = ArmaModStatus.UpToDate;
+            }
 
             IsLoading = false;
         }

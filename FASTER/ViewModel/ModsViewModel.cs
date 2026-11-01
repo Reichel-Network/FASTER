@@ -264,14 +264,23 @@ namespace FASTER.ViewModel
         }
 
         /// <summary>
-        /// Refresh Steam infos, then download only mods marked <see cref="ArmaModStatus.UpdateRequired"/>.
+        /// Mods that should be pulled from Steam Workshop (outdated revision, incomplete, or missing staging).
+        /// </summary>
+        public List<ArmaMod> GetModsNeedingWorkshopDownload()
+        {
+            return ModsCollection.ArmaMods
+                .Where(m => m.NeedsWorkshopDownload())
+                .ToList();
+        }
+
+        /// <summary>
+        /// Refresh Steam infos, then download only mods that need a Workshop refresh.
         /// Used by Repositories → Update &amp; Publish. Returns an <see cref="UpdateState"/> constant.
         /// </summary>
         public async Task<int> UpdateOutdatedModsAsync(bool navigateToConsole = false)
         {
             await CheckForUpdates().ConfigureAwait(true);
-            var outdated = new ObservableCollection<ArmaMod>(
-                ModsCollection.ArmaMods.Where(m => !m.IsLocal && m.Status == ArmaModStatus.UpdateRequired));
+            var outdated = new ObservableCollection<ArmaMod>(GetModsNeedingWorkshopDownload());
             if (outdated.Count == 0)
                 return UpdateState.Success;
 

@@ -539,11 +539,22 @@ namespace FASTER.ViewModel
         {
             ManifestId manifestId = default;
 
-            if (mod.LocalLastUpdated > mod.SteamLastUpdated && mod.Size > 0)
+            // Refresh Steam time_updated before the skip check so we don't trust a stale revision.
+            try { mod.UpdateInfos(checkFileSize: false); }
+            catch (Exception ex) { Logger.Log($"  UpdateInfos before download failed for {mod.WorkshopId}: {ex.Message}"); }
+
+            var hasContent = !string.IsNullOrWhiteSpace(mod.Path)
+                             && Directory.Exists(mod.Path)
+                             && mod.Size > 0;
+            // When IsDlOverride is set (explicit Update / Update & Publish list), still allow
+            // skip only if we already have this exact Steam revision on disk.
+            if (mod.SteamLastUpdated > 0
+                && mod.LocalLastUpdated == mod.SteamLastUpdated
+                && hasContent)
             {
                 mod.Status = ArmaModStatus.UpToDate;
                 Parameters.Output += $"\n   Mod{mod.WorkshopId} already up to date. Ignoring...";
-                Logger.Log($"  {mod.WorkshopId} already up to date, skipping.");
+                Logger.Log($"  {mod.WorkshopId} already up to date (steamRev={mod.SteamLastUpdated}), skipping.");
                 return;
             }
 
@@ -567,9 +578,7 @@ namespace FASTER.ViewModel
            Logger.Log($"  Download complete for {mod.WorkshopId}");
 
            mod.Status = ArmaModStatus.UpToDate;
-           var nx = DateTime.UnixEpoch;
-           var ts = DateTime.UtcNow - nx;
-           mod.LocalLastUpdated = (ulong)ts.TotalSeconds;
+           mod.MarkLocalRevisionFromSteam();
         }
 
         internal async Task<bool> SteamLogin()

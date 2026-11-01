@@ -677,20 +677,20 @@ namespace FASTER.ViewModel
                 AppendLog($"Update & Publish started: {repo.Name} → publish root {root}");
                 StatusText = $"Update & Publish \"{repo.Name}\"…";
 
-                // 1) Steam: refresh infos + download outdated Workshop mods only
+                // 1) Steam: refresh infos + download mods that need Workshop refresh
+                // (revision mismatch, incomplete, or missing staging — not wall-clock LocalLastUpdated)
                 var modsVm = MainWindow.Instance.ModsViewModel;
                 StatusText = "Checking Workshop mod updates…";
                 AppendLog("Checking Workshop mod infos…");
                 await modsVm.CheckForUpdates().ConfigureAwait(true);
                 token.ThrowIfCancellationRequested();
 
-                var outdated = modsVm.ModsCollection.ArmaMods
-                    .Where(m => !m.IsLocal && m.Status == ArmaModStatus.UpdateRequired)
-                    .ToList();
+                var outdated = modsVm.GetModsNeedingWorkshopDownload();
                 AppendLog(outdated.Count == 0
-                    ? "No Workshop mods marked Update Required."
-                    : $"Updating {outdated.Count} outdated Workshop mod(s): "
-                      + string.Join(", ", outdated.Select(m => $"{m.Name} ({m.WorkshopId})")));
+                    ? "No Workshop mods need download (Steam revision matches staging)."
+                    : $"Updating {outdated.Count} Workshop mod(s): "
+                      + string.Join(", ", outdated.Select(m =>
+                          $"{m.Name} ({m.WorkshopId}; steam={m.SteamLastUpdated}, local={m.LocalLastUpdated}, status={m.Status})")));
 
                 if (outdated.Count > 0)
                 {
