@@ -130,16 +130,23 @@ namespace FASTER.Services.A3S
                 }
             }
 
+            // Keys = event membership; bool = isOptional (not "selected").
             var selected = evt.SelectedAddonNames.ToList();
             var matched = new List<string>();
             var missing = new List<string>();
             ushort loadPriority = 1;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[A3S] ApplyEvent \"{evt.Name}\": {selected.Count} addon key(s), " +
+                $"{profile.ProfileMods.Count} profile mod(s), " +
+                $"Client={options.ApplyClient} Server={options.ApplyServer} HC={options.ApplyHeadless}");
 
             foreach (var addonKey in selected)
             {
                 var mod = FindMatchingProfileMod(profile.ProfileMods, addonKey);
                 if (mod == null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[A3S]   missing addon key [{addonKey}]");
                     missing.Add(addonKey);
                     continue;
                 }
@@ -157,6 +164,8 @@ namespace FASTER.Services.A3S
                     loadPriority++;
                 }
 
+                System.Diagnostics.Debug.WriteLine(
+                    $"[A3S]   matched [{addonKey}] → \"{mod.Name}\" (Id={mod.Id})");
                 matched.Add(mod.Name);
             }
 
@@ -167,7 +176,7 @@ namespace FASTER.Services.A3S
             profile.RaisePropertyChanged(nameof(ServerProfile.FilteredProfileMods));
             profile.RaisePropertyChanged(nameof(ServerProfile.CommandLine));
 
-            return new A3SEventApplyResult(evt.Name, matched, missing);
+            return new A3SEventApplyResult(evt.Name, matched, missing, selected.Count);
         }
 
         /// <summary>
@@ -392,18 +401,27 @@ namespace FASTER.Services.A3S
             if (mods == null || string.IsNullOrWhiteSpace(addonKey))
                 return null;
 
-            var key = addonKey.Trim();
-            var keyNoAt = key.StartsWith("@", StringComparison.Ordinal) ? key[1..] : key;
-            var keyCompare = ModUtilities.GetCompareString(key);
+            var key = addonKey.Trim().Replace('\\', '/');
+            // Event keys are often "450814997" or "@CBA_A3"; tolerate path-ish forms.
+            var basename = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
+            var keyNoAt = basename.StartsWith("@", StringComparison.Ordinal) ? basename[1..] : basename;
+            var keyCompare = ModUtilities.GetCompareString(keyNoAt);
             var keySafe = Functions.SafeName(keyNoAt);
+            var keyIsWorkshopId = uint.TryParse(keyNoAt, out var workshopId);
 
             foreach (var mod in mods)
             {
                 if (mod == null || string.IsNullOrWhiteSpace(mod.Name))
                     continue;
 
+                // Workshop folder id (classic A3S event keys for Steam/content folders)
+                if (keyIsWorkshopId && mod.Id == workshopId)
+                    return mod;
+
                 if (string.Equals(mod.Name, key, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(mod.Name, basename, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(mod.Name, keyNoAt, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals($"@{mod.Name}", basename, StringComparison.OrdinalIgnoreCase)
                     || string.Equals($"@{mod.Name}", key, StringComparison.OrdinalIgnoreCase))
                     return mod;
 
@@ -413,8 +431,10 @@ namespace FASTER.Services.A3S
                 if (string.Equals(ModUtilities.GetCompareString(mod.Name), keyCompare, StringComparison.OrdinalIgnoreCase))
                     return mod;
 
-                // Workshop-style folder id stored as mod Id / Name
-                if (uint.TryParse(keyNoAt, out var workshopId) && mod.Id == workshopId)
+                // Name stored as raw workshop folder id
+                if (keyIsWorkshopId
+                    && uint.TryParse(ModUtilities.GetCompareString(mod.Name), out var nameAsId)
+                    && nameAsId == workshopId)
                     return mod;
             }
 
@@ -592,7 +612,8 @@ namespace FASTER.Services.A3S
     public sealed record A3SEventApplyResult(
         string EventName,
         IReadOnlyList<string> MatchedMods,
-        IReadOnlyList<string> MissingAddons);
+        IReadOnlyList<string> MissingAddons,
+        int EventAddonCount = 0);
 
     public sealed record A3SEventLaunchResult(
         A3SSyncResult Sync,

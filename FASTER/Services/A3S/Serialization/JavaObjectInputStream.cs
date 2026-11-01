@@ -135,12 +135,17 @@ namespace FASTER.Services.A3S.Serialization
             var classDesc = ReadClassDesc(alreadyReadTc: false)
                             ?? throw new InvalidDataException("TC_OBJECT without class descriptor.");
             var obj = new JavaObject(classDesc.Name);
-            AssignHandle(obj);
+            var handle = AssignHandle(obj);
 
             foreach (var cls in classDesc.Hierarchy())
                 ReadClassData(cls, obj);
 
-            return NormalizeJdkObject(obj);
+            // Replace the handle with the normalized value so TC_REFERENCE to
+            // java.lang.Boolean / boxed numbers returns the unboxed form (HashMap values).
+            var normalized = NormalizeJdkObject(obj);
+            if (!ReferenceEquals(normalized, obj))
+                _handles[handle] = normalized;
+            return normalized;
         }
 
         private void ReadClassData(JavaClassDesc cls, JavaObject obj)

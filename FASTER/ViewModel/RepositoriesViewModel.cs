@@ -761,11 +761,15 @@ namespace FASTER.ViewModel
 
                 AppendLog(
                     $"Applied event \"{result.EventName}\" → profile \"{SelectedProfileForEvent.Name}\": " +
-                    $"matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
+                    $"event addons {result.EventAddonCount}, matched {result.MatchedMods.Count}, " +
+                    $"missing {result.MissingAddons.Count}.");
                 if (result.MissingAddons.Count > 0)
                     AppendLog("  Missing addons: " + string.Join(", ", result.MissingAddons));
 
-                StatusText = $"Event \"{result.EventName}\" applied to \"{SelectedProfileForEvent.Name}\".";
+                StatusText = result.EventAddonCount == 0
+                    ? $"Event \"{result.EventName}\" applied but metadata lists 0 addons."
+                    : $"Event \"{result.EventName}\" applied to \"{SelectedProfileForEvent.Name}\" " +
+                      $"(matched {result.MatchedMods.Count}/{result.EventAddonCount}).";
                 DisplayMessage(StatusText);
             }
             catch (Exception ex)
@@ -910,8 +914,8 @@ namespace FASTER.ViewModel
 
                 AppendLog(
                     $"Sync event complete: rev {result.Sync.Revision}, downloaded {result.Sync.Downloaded}, " +
-                    $"matched mods {result.Apply.MatchedMods.Count}, missing {result.Apply.MissingAddons.Count}, " +
-                    $"launched={result.Launched}.");
+                    $"event addons {result.Apply.EventAddonCount}, matched mods {result.Apply.MatchedMods.Count}, " +
+                    $"missing {result.Apply.MissingAddons.Count}, launched={result.Launched}.");
                 if (result.Apply.MissingAddons.Count > 0)
                     AppendLog("  Missing addons: " + string.Join(", ", result.Apply.MissingAddons));
 
