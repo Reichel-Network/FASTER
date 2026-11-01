@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
 
 namespace FASTER.Models
 {
@@ -168,6 +169,100 @@ namespace FASTER.Models
             var psi = CreateStartInfo(executable, arguments, workingDirectory);
             return Process.Start(psi)
                    ?? throw new InvalidOperationException($"Process.Start returned null for \"{executable}\".");
+        }
+
+        /// <summary>
+        /// Running arma3server* processes whose command line matches this profile
+        /// (<c>-profiles=...\Servers\{Id}</c>, HC folders <c>{Id}_hc*</c>, or <c>-port={Port}</c>).
+        /// </summary>
+        public static IReadOnlyList<ArmaProcessMatch> FindMatchingArmaProcesses(ServerProfile profile)
+        {
+            ArgumentNullException.ThrowIfNull(profile);
+            var matches = new List<ArmaProcessMatch>();
+            foreach (var proc in EnumerateArmaServerProcesses())
+            {
+                if (CommandLineMatchesProfile(proc.CommandLine, profile))
+                    matches.Add(proc);
+            }
+
+            return matches;
+        }
+
+        /// <summary>
+        /// Kill matching arma3server* (+ HC) processes for the profile. Returns how many were signaled.
+        /// </summary>
+        public static IReadOnlyList<ArmaProcessMatch> StopMatchingArmaProcesses(ServerProfile profile)
+        {
+            var matched = FindMatchingArmaProcesses(profile);
+            var stopped = new List<ArmaProcessMatch>();
+            foreach (var match in matched)
+            {
+                try
+                {
+                    using var process = Process.GetProcessById(match.ProcessId);
+                    process.Kill(entireProcessTree: true);
+                    stopped.Add(match);
+                }
+                catch (ArgumentException)
+                {
+                    // Already exited.
+                }
+                catch (InvalidOperationException)
+                {
+                    // Already exited.
+                }
+            }
+
+            return stopped;
+        }
+
+        public static bool CommandLineMatchesProfile(string? commandLine, ServerProfile profile)
+        {
+            if (string.IsNullOrWhiteSpace(commandLine) || profile == null)
+                return false;
+            if (string.IsNullOrWhiteSpace(profile.Id))
+                return false;
+
+            // Dedicated: ...\Servers\{Id}  HC: ...\Servers\{Id}_hcN
+            if (commandLine.Contains($"Servers\\{profile.Id}", StringComparison.OrdinalIgnoreCase)
+                || commandLine.Contains($"Servers/{profile.Id}", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var port = profile.Port <= 0 ? 2302 : profile.Port;
+            if (commandLine.Contains($"-port={port}", StringComparison.OrdinalIgnoreCase)
+                || commandLine.Contains($"-port {port}", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+
+        public sealed class ArmaProcessMatch
+        {
+            public int ProcessId { get; init; }
+            public string ProcessName { get; init; } = string.Empty;
+            public string CommandLine { get; init; } = string.Empty;
+        }
+
+        private static IEnumerable<ArmaProcessMatch> EnumerateArmaServerProcesses()
+        {
+            // WMI is the reliable way to read command lines for already-running processes.
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT ProcessId, Name, CommandLine FROM Win32_Process WHERE Name LIKE 'arma3server%'");
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                int pid;
+                try { pid = Convert.ToInt32(obj["ProcessId"]); }
+                catch { continue; }
+
+                var name = obj["Name"]?.ToString() ?? string.Empty;
+                var cmd = obj["CommandLine"]?.ToString() ?? string.Empty;
+                yield return new ArmaProcessMatch
+                {
+                    ProcessId = pid,
+                    ProcessName = name,
+                    CommandLine = cmd
+                };
+            }
         }
 
         private static IEnumerable<string> DistinctExistingDirs(params string?[] paths)

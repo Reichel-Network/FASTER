@@ -24,11 +24,18 @@ namespace FASTER.Services.Tests
         }
 
         [Test]
-        public void BuildCommands_RegistersThreeSlashCommands()
+        public void BuildCommands_RegistersStartStopAndDeploySlashCommands()
         {
             var cmds = FasterDiscordBotHost.BuildCommands();
             Assert.That(cmds.Select(c => c.Name.GetValueOrDefault()).ToArray(),
-                Is.EquivalentTo(new[] { "faster-status", "faster-events", "faster-deploy" }));
+                Is.EquivalentTo(new[]
+                {
+                    "faster-status",
+                    "faster-events",
+                    "faster-deploy",
+                    "faster-start",
+                    "faster-stop"
+                }));
         }
     }
 }

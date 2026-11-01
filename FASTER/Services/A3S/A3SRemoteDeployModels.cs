@@ -76,4 +76,15 @@ namespace FASTER.Services.A3S
         public string AutoconfigUrl { get; init; } = string.Empty;
         public IReadOnlyList<string> Events { get; init; } = System.Array.Empty<string>();
     }
+
+    public sealed class A3SRemoteServerControlResult
+    {
+        public string Action { get; init; } = string.Empty;
+        public string ProfileName { get; init; } = string.Empty;
+        public string ProfileId { get; init; } = string.Empty;
+        public int Port { get; init; }
+        public bool Ok { get; init; }
+        public string Message { get; init; } = string.Empty;
+        public IReadOnlyList<int> ProcessIds { get; init; } = System.Array.Empty<int>();
+    }
 }

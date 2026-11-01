@@ -114,7 +114,7 @@
                     <Expander Header="Discord bot (in-process)" Margin="5,8,5,0" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0">
                             <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"
-                                       Text="Runs /faster-status, /faster-events, /faster-deploy inside FASTER. Invite the bot with applications.commands. Restart FASTER after changing. Env: DISCORD_BOT_ENABLED, DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, DISCORD_ALLOW_USER_IDS, DISCORD_ALLOW_ROLE_IDS, FASTER_DEFAULT_REPO."/>
+                                       Text="Runs /faster-status, /faster-events, /faster-deploy, /faster-start, /faster-stop inside FASTER. Invite the bot with applications.commands. Restart FASTER after changing. Env: DISCORD_BOT_ENABLED, DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, DISCORD_ALLOW_USER_IDS, DISCORD_ALLOW_ROLE_IDS, FASTER_DEFAULT_REPO."/>
                             <CheckBox Name="IDiscordBotEnabled" Content="Enable Discord bot" Margin="0,0,0,8"/>
                             <TextBox x:Name="IDiscordBotToken" Margin="0,0,0,6" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="Discord bot token"/>
                             <TextBox x:Name="IDiscordGuildId" Margin="0,0,0,6" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="Guild ID (recommended — instant slash commands)"/>

@@ -257,6 +257,80 @@ namespace FASTER.Services.A3S
                 "Multiple profiles exist — pass \"profile\" or set a3sLocalApiDefaultProfile.");
         }
 
+        /// <summary>
+        /// Start the Arma dedicated server for a profile (UI launch path when available).
+        /// </summary>
+        public async Task<A3SRemoteServerControlResult> StartServerAsync(
+            string? profileName,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var profile = ResolveProfile(profileName);
+            var port = profile.Port <= 0 ? 2302 : profile.Port;
+
+            var already = ServerLaunch.FindMatchingArmaProcesses(profile);
+            if (already.Count > 0)
+            {
+                return new A3SRemoteServerControlResult
+                {
+                    Action = "start",
+                    ProfileName = profile.Name ?? string.Empty,
+                    ProfileId = profile.Id ?? string.Empty,
+                    Port = port,
+                    Ok = true,
+                    Message = $"Server for \"{profile.Name}\" already running ({already.Count} process(es)).",
+                    ProcessIds = already.Select(p => p.ProcessId).ToList()
+                };
+            }
+
+            if (_launchAsync != null)
+            {
+                await _launchAsync(profile).ConfigureAwait(false);
+            }
+            else
+            {
+                TryLaunchProfileProcess(profile);
+            }
+
+            // Brief settle so WMI can see the new process when callers check immediately.
+            await Task.Delay(800, cancellationToken).ConfigureAwait(false);
+            var running = ServerLaunch.FindMatchingArmaProcesses(profile);
+            return new A3SRemoteServerControlResult
+            {
+                Action = "start",
+                ProfileName = profile.Name ?? string.Empty,
+                ProfileId = profile.Id ?? string.Empty,
+                Port = port,
+                Ok = true,
+                Message = running.Count > 0
+                    ? $"Started \"{profile.Name}\" (PID {string.Join(", ", running.Select(p => p.ProcessId))})."
+                    : $"Launch requested for \"{profile.Name}\" (process not visible yet).",
+                ProcessIds = running.Select(p => p.ProcessId).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Stop arma3server* (+ HC) processes matching the profile.
+        /// </summary>
+        public A3SRemoteServerControlResult StopServer(string? profileName)
+        {
+            var profile = ResolveProfile(profileName);
+            var port = profile.Port <= 0 ? 2302 : profile.Port;
+            var stopped = ServerLaunch.StopMatchingArmaProcesses(profile);
+            return new A3SRemoteServerControlResult
+            {
+                Action = "stop",
+                ProfileName = profile.Name ?? string.Empty,
+                ProfileId = profile.Id ?? string.Empty,
+                Port = port,
+                Ok = true,
+                Message = stopped.Count == 0
+                    ? $"No running arma3server process matched profile \"{profile.Name}\"."
+                    : $"Stopped {stopped.Count} process(es) for \"{profile.Name}\" (PID {string.Join(", ", stopped.Select(p => p.ProcessId))}).",
+                ProcessIds = stopped.Select(p => p.ProcessId).ToList()
+            };
+        }
+
         private void TryLaunchProfileProcess(ServerProfile profile)
         {
             profile.RaisePropertyChanged(nameof(ServerProfile.CommandLine));
