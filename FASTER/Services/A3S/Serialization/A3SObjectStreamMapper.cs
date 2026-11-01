@@ -297,10 +297,26 @@ namespace FASTER.Services.A3S.Serialization
             foreach (var pair in map)
             {
                 if (pair.Key is string key)
-                    result[key] = pair.Value is bool b && b;
+                    result[key] = ToBoolValue(pair.Value);
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Unwrap HashMap bool values. After handle rewrite, values are usually unboxed
+        /// <see cref="bool"/>; still accept leftover <c>java.lang.Boolean</c> objects.
+        /// </summary>
+        private static bool ToBoolValue(object? value)
+        {
+            if (value is bool b)
+                return b;
+            if (value is JavaObject jo
+                && jo.ClassName.Equals("java.lang.Boolean", StringComparison.Ordinal)
+                && jo.Fields.TryGetValue("value", out var field)
+                && field is bool fb)
+                return fb;
+            return false;
         }
     }
 }

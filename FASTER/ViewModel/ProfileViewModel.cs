@@ -185,8 +185,7 @@ namespace FASTER.ViewModel
             LoadData();
             var result = eventService.ApplyEventToProfile(evt, Profile);
             eventService.AttachEventToProfile(Profile, repo, evt.Name);
-            DisplayMessage(
-                $"Applied \"{result.EventName}\" from metadata: matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
+            DisplayMessage(FormatA3SApplyMessage(result, fromMetadata: true));
         }
 
         /// <summary>Launch without running sync-before-launch (used by Sync → Deploy → Launch).</summary>
@@ -706,13 +705,27 @@ namespace FASTER.ViewModel
                 LoadData();
                 var result = service.ApplyEventToProfile(evt, Profile);
                 service.AttachEventToProfile(Profile, repo!, evt.Name);
-                DisplayMessage(
-                    $"Applied \"{result.EventName}\": matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
+                DisplayMessage(FormatA3SApplyMessage(result, fromMetadata: false));
             }
             catch (Exception ex)
             {
                 DisplayMessage($"Apply A3S event failed: {ex.Message}");
             }
+        }
+
+        private static string FormatA3SApplyMessage(A3SEventApplyResult result, bool fromMetadata)
+        {
+            var prefix = fromMetadata
+                ? $"Applied \"{result.EventName}\" from metadata"
+                : $"Applied \"{result.EventName}\"";
+            if (result.EventAddonCount == 0)
+            {
+                return $"{prefix}: event metadata lists 0 addons " +
+                       $"(matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}).";
+            }
+
+            return $"{prefix}: event addons {result.EventAddonCount}, " +
+                   $"matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.";
         }
 
         public async Task WriteA3SFavoriteServerAsync()

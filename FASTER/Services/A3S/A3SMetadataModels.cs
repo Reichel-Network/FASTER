@@ -146,7 +146,11 @@ namespace FASTER.Services.A3S
         [JsonPropertyName("description")]
         public string Description { get; set; } = string.Empty;
 
-        /// <summary>Addon folder names → selected (keys often <c>@mod</c> or workshop folder ids).</summary>
+        /// <summary>
+        /// Event addon set: keys are addon folder names (often workshop ids or <c>@mod</c>).
+        /// Values are <c>isOptional</c> (Arma3Sync semantics) — <c>false</c> = required, <c>true</c> = optional.
+        /// Presence of a key means the addon belongs to the event; do not treat the bool as selected.
+        /// </summary>
         [JsonPropertyName("addonNames")]
         public Dictionary<string, bool> AddonNames { get; set; } = new();
 
@@ -156,8 +160,14 @@ namespace FASTER.Services.A3S
         [JsonPropertyName("userconfigFolderNames")]
         public Dictionary<string, bool> UserconfigFolderNames { get; set; } = new();
 
+        /// <summary>All event addon keys (required + optional). Matches Arma3Sync event membership.</summary>
         [JsonIgnore]
         public IReadOnlyList<string> SelectedAddonNames =>
+            AddonNames.Keys.ToList();
+
+        /// <summary>Addon keys marked optional (<c>true</c>) in classic A3S metadata.</summary>
+        [JsonIgnore]
+        public IReadOnlyList<string> OptionalAddonNames =>
             AddonNames.Where(kv => kv.Value).Select(kv => kv.Key).ToList();
     }
 
