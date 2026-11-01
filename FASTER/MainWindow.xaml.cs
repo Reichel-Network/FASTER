@@ -35,7 +35,9 @@ namespace FASTER
         internal bool NavEnabled = true;
 
         private ToggleButton lastNavButton;
+        private A3SRemoteDeployService? _remoteDeploy;
         private FasterLocalApiHost? _localApiHost;
+        private FasterDiscordBotHost? _discordBotHost;
 
         #region INSTANCES
         private static MainWindow _instance;
@@ -172,13 +174,16 @@ namespace FASTER
             if (ConvertMods)
                 await ModConversion();
 
-            TryStartLocalApi();
+            TryStartRemoteIntegrations();
         }
 
         private void MetroWindow_Closing(object sender, CancelEventArgs e)
         {
+            try { _discordBotHost?.Dispose(); } catch { /* ignore */ }
+            _discordBotHost = null;
             try { _localApiHost?.Dispose(); } catch { /* ignore */ }
             _localApiHost = null;
+            _remoteDeploy = null;
             Properties.Settings.Default.Save();
             SteamUpdaterViewModel.Instance.SteamClient?.Shutdown();
             SteamUpdaterViewModel.Instance.SteamClient?.Dispose();
@@ -186,30 +191,69 @@ namespace FASTER
         }
 
         /// <summary>
-        /// Start localhost token API when enabled (settings or FASTER_LOCAL_API_* env).
-        /// Launch uses the same ProfileViewModel path as the UI.
+        /// Start localhost token API and/or in-process Discord bot when enabled
+        /// (Settings or FASTER_LOCAL_API_* / DISCORD_* env). Shared deploy + launch path.
         /// </summary>
-        private void TryStartLocalApi()
+        private void TryStartRemoteIntegrations()
         {
+            try { _discordBotHost?.Dispose(); } catch { /* ignore */ }
+            _discordBotHost = null;
+            try { _localApiHost?.Dispose(); } catch { /* ignore */ }
+            _localApiHost = null;
+
+            Func<ServerProfile, Task> launchAsync = async profile =>
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var existing = ContentProfileViews.FirstOrDefault(vm => vm.Profile?.Id == profile.Id);
+                    var vm = existing ?? new ProfileViewModel(profile);
+                    vm.LaunchServerCore();
+                });
+            };
+
+            _remoteDeploy = new A3SRemoteDeployService(launchAsync: launchAsync);
+
             try
             {
-                _localApiHost?.Dispose();
                 _localApiHost = FasterLocalApiHost.TryCreateFromSettings(
-                    launchAsync: async profile =>
-                    {
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            var existing = ContentProfileViews.FirstOrDefault(vm => vm.Profile?.Id == profile.Id);
-                            var vm = existing ?? new ProfileViewModel(profile);
-                            vm.LaunchServerCore();
-                        });
-                    });
+                    launchAsync: launchAsync,
+                    sharedDeploy: _remoteDeploy);
                 _localApiHost?.Start();
             }
             catch (Exception ex)
             {
                 Logger.Log($"Local A3S API failed to start: {ex.Message}");
                 IFlyoutMessage.Content = $"Local A3S API failed to start: {ex.Message}";
+                try { IFlyout.IsOpen = true; } catch { /* ignore */ }
+            }
+
+            try
+            {
+                _discordBotHost = FasterDiscordBotHost.TryCreateFromSettings(
+                    _remoteDeploy,
+                    apiPort: () => _localApiHost?.Port ?? FasterLocalApiHost.DefaultPort,
+                    apiListening: () => _localApiHost?.IsListening ?? false);
+                if (_discordBotHost != null)
+                {
+                    _ = _discordBotHost.StartAsync().ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                        {
+                            var msg = t.Exception?.GetBaseException().Message ?? "unknown error";
+                            Logger.Log($"Discord bot failed to start: {msg}");
+                            Dispatcher.InvokeAsync(() =>
+                            {
+                                IFlyoutMessage.Content = $"Discord bot failed to start: {msg}";
+                                try { IFlyout.IsOpen = true; } catch { /* ignore */ }
+                            });
+                        }
+                    }, TaskScheduler.Default);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Discord bot failed to start: {ex.Message}");
+                IFlyoutMessage.Content = $"Discord bot failed to start: {ex.Message}";
                 try { IFlyout.IsOpen = true; } catch { /* ignore */ }
             }
         }

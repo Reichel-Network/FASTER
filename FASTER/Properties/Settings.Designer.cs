@@ -558,5 +558,95 @@ namespace FASTER.Properties {
                 this["a3sLocalApiDefaultProfile"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool discordBotEnabled
+        {
+            get
+            {
+                return ((bool)(this["discordBotEnabled"]));
+            }
+            set
+            {
+                this["discordBotEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string discordBotToken
+        {
+            get
+            {
+                return ((string)(this["discordBotToken"]));
+            }
+            set
+            {
+                this["discordBotToken"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string discordGuildId
+        {
+            get
+            {
+                return ((string)(this["discordGuildId"]));
+            }
+            set
+            {
+                this["discordGuildId"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string discordAllowUserIds
+        {
+            get
+            {
+                return ((string)(this["discordAllowUserIds"]));
+            }
+            set
+            {
+                this["discordAllowUserIds"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string discordAllowRoleIds
+        {
+            get
+            {
+                return ((string)(this["discordAllowRoleIds"]));
+            }
+            set
+            {
+                this["discordAllowRoleIds"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string discordDefaultRepo
+        {
+            get
+            {
+                return ((string)(this["discordDefaultRepo"]));
+            }
+            set
+            {
+                this["discordDefaultRepo"] = value;
+            }
+        }
     }
 }
