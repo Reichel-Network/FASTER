@@ -116,5 +116,17 @@
     <Setting Name="a3sEnableMetadataBridgeFallback" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="a3sLocalApiEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="a3sLocalApiPort" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">8787</Value>
+    </Setting>
+    <Setting Name="a3sLocalApiToken" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="a3sLocalApiDefaultProfile" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

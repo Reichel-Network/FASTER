@@ -17,6 +17,34 @@ namespace FASTER.Services.A3S
         /// </summary>
         public const string A3SJsonSidecarFolderName = ".a3s-json";
 
+        /// <summary>
+        /// Normalize a sync / content-root / autoconfig URL into classic <c>.../.a3s/autoconfig</c>.
+        /// Accepts bare content roots, <c>/.a3s/</c>, <c>/.a3s/sync</c>, or an already-valid autoconfig URL.
+        /// </summary>
+        public static string NormalizeAutoconfigUrl(string urlOrSyncUrl)
+        {
+            if (string.IsNullOrWhiteSpace(urlOrSyncUrl))
+                throw new ArgumentException("URL is required.", nameof(urlOrSyncUrl));
+
+            var trimmed = urlOrSyncUrl.Trim().TrimEnd('/');
+            if (trimmed.EndsWith("/.a3s/autoconfig", StringComparison.OrdinalIgnoreCase))
+                return trimmed;
+
+            if (trimmed.EndsWith("/.a3s/sync", StringComparison.OrdinalIgnoreCase)
+                || trimmed.EndsWith("/.a3s/events", StringComparison.OrdinalIgnoreCase)
+                || trimmed.EndsWith("/.a3s/serverinfo", StringComparison.OrdinalIgnoreCase)
+                || trimmed.EndsWith("/.a3s/changelogs", StringComparison.OrdinalIgnoreCase))
+            {
+                var cut = trimmed.LastIndexOf("/.a3s/", StringComparison.OrdinalIgnoreCase);
+                return trimmed[..cut] + AutoconfigSuffix;
+            }
+
+            if (trimmed.EndsWith("/.a3s", StringComparison.OrdinalIgnoreCase))
+                return trimmed + "/autoconfig";
+
+            return trimmed + AutoconfigSuffix;
+        }
+
         /// <summary>Directory names under a publish root that are metadata stores, not addon content.</summary>
         public static bool IsMetadataSidecarDirectory(string? directoryName)
         {

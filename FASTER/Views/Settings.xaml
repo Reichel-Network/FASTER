@@ -94,6 +94,23 @@
                     </Grid>
                     <CheckBox Name="IA3SSyncBeforeLaunch" Content="Sync A3S repository before profile launch" Margin="5,8,5,4" Click="IA3SSyncBeforeLaunch_Checked"/>
                     <CheckBox Name="IA3SPreferNativeSerializer" Content="Use native C# ObjectStream for classic .a3s metadata (no Java required)" Margin="5,4,5,4" Click="IA3SPreferNativeSerializer_Checked"/>
+                    <Expander Header="Localhost API (Discord deploy)" Margin="5,8,5,0" IsExpanded="False">
+                        <StackPanel Margin="0,8,0,0">
+                            <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"
+                                       Text="Token-protected HTTP API on 127.0.0.1 for Discord bots. Restart FASTER after changing. Env overrides: FASTER_LOCAL_API_ENABLED, FASTER_LOCAL_API_TOKEN, FASTER_LOCAL_API_PORT."/>
+                            <CheckBox Name="IA3SLocalApiEnabled" Content="Enable localhost A3S deploy API" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center" Text="Port"/>
+                                <TextBox Grid.Column="1" x:Name="IA3SLocalApiPort" controls:TextBoxHelper.Watermark="8787"/>
+                            </Grid>
+                            <TextBox x:Name="IA3SLocalApiToken" Margin="0,0,0,6" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="API bearer token"/>
+                            <TextBox x:Name="IA3SLocalApiDefaultProfile" controls:TextBoxHelper.UseFloatingWatermark="True" controls:TextBoxHelper.Watermark="Default profile name (optional)"/>
+                        </StackPanel>
+                    </Expander>
                     <Expander Header="Advanced — optional Java metadata bridge" Margin="5,8,5,0" IsExpanded="False">
                         <StackPanel Margin="0,8,0,0">
                             <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,6"

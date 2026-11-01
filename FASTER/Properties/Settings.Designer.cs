@@ -498,5 +498,65 @@ namespace FASTER.Properties {
                 this["a3sEnableMetadataBridgeFallback"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool a3sLocalApiEnabled
+        {
+            get
+            {
+                return ((bool)(this["a3sLocalApiEnabled"]));
+            }
+            set
+            {
+                this["a3sLocalApiEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("8787")]
+        public int a3sLocalApiPort
+        {
+            get
+            {
+                return ((int)(this["a3sLocalApiPort"]));
+            }
+            set
+            {
+                this["a3sLocalApiPort"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string a3sLocalApiToken
+        {
+            get
+            {
+                return ((string)(this["a3sLocalApiToken"]));
+            }
+            set
+            {
+                this["a3sLocalApiToken"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string a3sLocalApiDefaultProfile
+        {
+            get
+            {
+                return ((string)(this["a3sLocalApiDefaultProfile"]));
+            }
+            set
+            {
+                this["a3sLocalApiDefaultProfile"] = value;
+            }
+        }
     }
 }

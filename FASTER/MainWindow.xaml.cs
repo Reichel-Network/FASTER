@@ -1,4 +1,5 @@
 using FASTER.Models;
+using FASTER.Services.A3S;
 using FASTER.ViewModel;
 using FASTER.Views;
 
@@ -34,6 +35,7 @@ namespace FASTER
         internal bool NavEnabled = true;
 
         private ToggleButton lastNavButton;
+        private FasterLocalApiHost? _localApiHost;
 
         #region INSTANCES
         private static MainWindow _instance;
@@ -169,14 +171,47 @@ namespace FASTER
             
             if (ConvertMods)
                 await ModConversion();
+
+            TryStartLocalApi();
         }
 
         private void MetroWindow_Closing(object sender, CancelEventArgs e)
         {
+            try { _localApiHost?.Dispose(); } catch { /* ignore */ }
+            _localApiHost = null;
             Properties.Settings.Default.Save();
             SteamUpdaterViewModel.Instance.SteamClient?.Shutdown();
             SteamUpdaterViewModel.Instance.SteamClient?.Dispose();
             Application.Current.Shutdown();
+        }
+
+        /// <summary>
+        /// Start localhost token API when enabled (settings or FASTER_LOCAL_API_* env).
+        /// Launch uses the same ProfileViewModel path as the UI.
+        /// </summary>
+        private void TryStartLocalApi()
+        {
+            try
+            {
+                _localApiHost?.Dispose();
+                _localApiHost = FasterLocalApiHost.TryCreateFromSettings(
+                    launchAsync: async profile =>
+                    {
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            var existing = ContentProfileViews.FirstOrDefault(vm => vm.Profile?.Id == profile.Id);
+                            var vm = existing ?? new ProfileViewModel(profile);
+                            vm.LaunchServerCore();
+                        });
+                    });
+                _localApiHost?.Start();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Local A3S API failed to start: {ex.Message}");
+                IFlyoutMessage.Content = $"Local A3S API failed to start: {ex.Message}";
+                try { IFlyout.IsOpen = true; } catch { /* ignore */ }
+            }
         }
 
         private static IEnumerable<ToggleButton> GetProfileToggleButtons(System.Windows.Controls.ListBox menu)
