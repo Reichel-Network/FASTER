@@ -68,21 +68,22 @@ namespace FASTER.ViewModel
         internal void LaunchHCs()
         {
             if (!Profile.ServerCfg.HeadlessClientEnabled) return;
+            if (!EnsureExecutableResolved()) return;
             if (!VerifyBeforeLaunch()) return;
 
-            //Launching... 
             DisplayMessage($"Launching Headless Clients for {Profile.Name}...");
-            string commandLine;
-            for (int hc = 1; hc <= Profile.HeadlessNumber; hc++ )
+            for (int hc = 1; hc <= Profile.HeadlessNumber; hc++)
             {
-                commandLine = SetHCCommandLine(hc);
-                #if DEBUG
-                DisplayMessage($"{Profile.HeadlessNumber} Headless Clients launched !\n{commandLine}");
-                #else
-                ProcessStartInfo hcStartInfo = new ProcessStartInfo(Profile.Executable, commandLine);
-                Process          hcProcess   = new Process { StartInfo = hcStartInfo };
-                hcProcess.Start();
-                #endif
+                var commandLine = SetHCCommandLine(hc);
+                try
+                {
+                    ServerLaunch.StartServer(Profile.Executable, commandLine, Profile.ArmaPath);
+                }
+                catch (Exception ex)
+                {
+                    DisplayMessage($"Failed to start headless client #{hc}: {ex.Message}");
+                    return;
+                }
             }
         }
 
@@ -121,21 +122,24 @@ namespace FASTER.ViewModel
 
         internal async Task LaunchServer()
         {
+            if (!EnsureExecutableResolved())
+                return;
+
             if (Properties.Settings.Default.a3sSyncBeforeLaunch
                 && !string.IsNullOrWhiteSpace(Profile.A3SRepositoryId)
                 && !string.IsNullOrWhiteSpace(Profile.A3SEventName))
             {
-                try
+                var eventService = new A3SEventService();
+                var repo = eventService.FindAttachedRepository(Profile);
+                if (repo == null)
                 {
-                    DisplayMessage($"A3S sync-before-launch: {Profile.A3SEventName}…");
-                    var eventService = new A3SEventService();
-                    var repo = eventService.FindAttachedRepository(Profile);
-                    if (repo == null)
+                    DisplayMessage("Attached A3S repository not found; launching with current profile mods.");
+                }
+                else
+                {
+                    try
                     {
-                        DisplayMessage("Attached A3S repository not found; launching without sync.");
-                    }
-                    else
-                    {
+                        DisplayMessage($"A3S sync-before-launch: {Profile.A3SEventName}…");
                         Action? deploy = null;
                         if (MainWindow.HasLoaded())
                             deploy = () => MainWindow.Instance.DeployViewModel.DeployAll();
@@ -149,23 +153,50 @@ namespace FASTER.ViewModel
                             .ConfigureAwait(true);
                         DisplayMessage($"Synced event \"{Profile.A3SEventName}\" — launching…");
                     }
-                }
-                catch (Exception ex)
-                {
-                    DisplayMessage($"A3S sync-before-launch failed: {ex.Message}");
-                    return;
+                    catch (Exception ex)
+                    {
+                        // Never abort Process.Start because sync/network failed — apply event
+                        // checkboxes from metadata when possible, then launch with what we have.
+                        DisplayMessage($"A3S sync-before-launch failed: {ex.Message}\nApplying event from metadata and launching anyway…");
+                        try
+                        {
+                            await ApplyAttachedEventFromMetadataAsync(eventService, repo).ConfigureAwait(true);
+                        }
+                        catch (Exception applyEx)
+                        {
+                            DisplayMessage($"Could not apply A3S event \"{Profile.A3SEventName}\": {applyEx.Message}\nLaunching with current profile selection.");
+                        }
+                    }
                 }
             }
 
             LaunchServerCore();
         }
 
+        /// <summary>Apply attached event addon checks without syncing content (metadata only).</summary>
+        private async Task ApplyAttachedEventFromMetadataAsync(A3SEventService eventService, A3SRepository repo)
+        {
+            var events = await eventService.ListEventsAsync(repo).ConfigureAwait(true);
+            var evt = events.FirstOrDefault(e =>
+                string.Equals(e.Name, Profile.A3SEventName, StringComparison.OrdinalIgnoreCase));
+            if (evt == null)
+                throw new InvalidOperationException($"Event \"{Profile.A3SEventName}\" was not found in repository metadata.");
+
+            LoadData();
+            var result = eventService.ApplyEventToProfile(evt, Profile);
+            eventService.AttachEventToProfile(Profile, repo, evt.Name);
+            DisplayMessage(
+                $"Applied \"{result.EventName}\" from metadata: matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
+        }
+
         /// <summary>Launch without running sync-before-launch (used by Sync → Deploy → Launch).</summary>
         internal void LaunchServerCore()
         {
-            if (!VerifyBeforeLaunch()) return;
+            if (!EnsureExecutableResolved())
+                return;
+            if (!VerifyBeforeLaunch())
+                return;
 
-            //Launching...
             DisplayMessage($"Launching Profile {Profile.Name}...");
 
             Analytics.TrackEvent("Profile - Clicked LaunchServer", new Dictionary<string, string>
@@ -190,50 +221,83 @@ namespace FASTER.ViewModel
                                            {{ "Name", Properties.Settings.Default.steamUserName }});
                 }
             }
-            #if DEBUG
-            DisplayMessage($"Launching Arma3Server with commandline : \n{commandLine}");
-            #else
-            DisplayMessage($"Profile {Profile.Name}'s server launched !\nCommand line copied to clipboard.");
-            ProcessStartInfo sStartInfo = new ProcessStartInfo(Profile.Executable, commandLine);
-            Process          sProcess   = new Process { StartInfo = sStartInfo };
-            sProcess.Start();
 
-            LaunchHCs();
-            #endif
+            var selectedMods = ServerLaunch.CountSelectedLaunchMods(Profile);
+            if (selectedMods == 0)
+            {
+                DisplayMessage(
+                    "No mods are checked on this profile (Client / Server / HC). " +
+                    "Launching anyway — use Apply A3S Event or tick mods before Launch if you need -mod.");
+            }
+            else
+            {
+                var missing = ServerLaunch.MissingDeployedMods(Profile);
+                if (missing.Count > 0)
+                {
+                    DisplayMessage(
+                        $"{missing.Count} selected mod folder(s) missing under the server directory (Deploy first):\n" +
+                        string.Join("\n", missing.Take(8)) +
+                        (missing.Count > 8 ? "\n…" : string.Empty));
+                }
+            }
+
+            try
+            {
+                var process = ServerLaunch.StartServer(Profile.Executable, commandLine, Profile.ArmaPath);
+                DisplayMessage(
+                    $"Profile {Profile.Name} launched (PID {process.Id}).\n" +
+                    $"Exe: {Path.GetFileName(Profile.Executable)} | Mods selected: {selectedMods}\n" +
+                    "Command line copied to clipboard.");
+                LaunchHCs();
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage(
+                    $"Failed to start Arma 3 server:\n{ex.Message}\n" +
+                    $"Executable: {Profile.Executable}\nWorking directory: {Profile.ArmaPath}");
+            }
+        }
+
+        /// <summary>
+        /// Resolve arma3server_x64.exe (preferred) under serverPath / profile path when missing or invalid.
+        /// </summary>
+        private bool EnsureExecutableResolved()
+        {
+            var resolved = ServerLaunch.ResolveExecutable(
+                Profile.Executable,
+                Properties.Settings.Default.serverPath);
+
+            if (resolved == null)
+            {
+                DisplayMessage(
+                    "Could not find arma3server_x64.exe (or arma3server.exe).\n" +
+                    "Set Settings → Arma server path / profile Server File to your dedicated server install " +
+                    "(Steam app 233780), then Save the profile.");
+                return false;
+            }
+
+            if (!string.Equals(Profile.Executable, resolved, StringComparison.OrdinalIgnoreCase))
+            {
+                Profile.Executable = resolved;
+                DisplayMessage($"Server executable resolved to:\n{resolved}");
+            }
+
+            return true;
         }
 
         /// <summary>
         /// Check if the server can be launched
         /// </summary>
-        /// <returns></returns>
         private bool VerifyBeforeLaunch()
         {
-            if (!ProfileFilesExist(Profile.Id))
+            var result = ServerLaunch.ValidateForLaunch(Profile, requireConfigFiles: true);
+            if (!result.Ok)
             {
-                DisplayMessage("The profile does not exist in the game files.\nYou might need to save it first.");
+                DisplayMessage(result.Message);
                 return false;
             }
 
-            if (!(Profile.Executable != null && Profile.Executable.Contains("arma3server") && Profile.Executable.EndsWith(".exe")))
-            {
-                DisplayMessage("Please select a valid Arma 3 Sever Executable.");
-                return false;
-            }
-
-            if (File.Exists(Profile.Executable)) return true;
-            DisplayMessage("Arma 3 Server Executable does not exist. Please reselect correct file.");
-            return false;
-        }
-
-        private bool ProfileFilesExist(string profile)
-        {
-            string path = Profile.ArmaPath;
-
-            if (!Directory.Exists(Path.Combine(path, "Servers", profile)))
-            { return false; }
-
-            return File.Exists(Path.Combine(path, "Servers", profile, "server_config.cfg")) 
-                && File.Exists(Path.Combine(path, "Servers", profile, "server_basic.cfg"));
+            return true;
         }
 
         internal void DeleteProfile()

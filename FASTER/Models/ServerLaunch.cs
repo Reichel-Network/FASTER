@@ -1,0 +1,190 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+
+namespace FASTER.Models
+{
+    /// <summary>
+    /// Shared helpers for resolving the Arma 3 dedicated-server binary and building a reliable
+    /// <see cref="ProcessStartInfo"/> (working directory, args, validation).
+    /// </summary>
+    public static class ServerLaunch
+    {
+        public static readonly string[] CandidateFileNames =
+        {
+            "arma3server_x64.exe",
+            "arma3serverprofiling_x64.exe",
+            "arma3server.exe",
+            "arma3serverprofiling.exe"
+        };
+
+        public sealed class ValidationResult
+        {
+            public bool Ok { get; init; }
+            public string Message { get; init; } = string.Empty;
+            public bool IsWarning { get; init; }
+
+            public static ValidationResult Success() => new() { Ok = true };
+            public static ValidationResult Fail(string message) => new() { Ok = false, Message = message };
+            public static ValidationResult Warn(string message) => new() { Ok = true, IsWarning = true, Message = message };
+        }
+
+        /// <summary>
+        /// Prefer an existing profile executable when it is a valid arma3server*.exe;
+        /// otherwise locate the best dedicated-server binary under <paramref name="serverPath"/>
+        /// or the preferred file's directory.
+        /// </summary>
+        public static string? ResolveExecutable(string? preferredExecutable, string? serverPath)
+        {
+            if (IsValidServerExecutable(preferredExecutable) && File.Exists(preferredExecutable))
+                return Path.GetFullPath(preferredExecutable!);
+
+            foreach (var root in DistinctExistingDirs(serverPath, Path.GetDirectoryName(preferredExecutable)))
+            {
+                foreach (var name in CandidateFileNames)
+                {
+                    var candidate = Path.Combine(root, name);
+                    if (File.Exists(candidate))
+                        return Path.GetFullPath(candidate);
+                }
+            }
+
+            return null;
+        }
+
+        public static bool IsValidServerExecutable(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+            if (!path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var fileName = Path.GetFileName(path);
+            return fileName.StartsWith("arma3server", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static ProcessStartInfo CreateStartInfo(string executable, string arguments, string? workingDirectory = null)
+        {
+            if (string.IsNullOrWhiteSpace(executable))
+                throw new ArgumentException("Executable path is required.", nameof(executable));
+
+            var workDir = !string.IsNullOrWhiteSpace(workingDirectory)
+                ? workingDirectory
+                : Path.GetDirectoryName(executable) ?? string.Empty;
+
+            return new ProcessStartInfo
+            {
+                FileName = executable,
+                Arguments = arguments ?? string.Empty,
+                WorkingDirectory = workDir,
+                UseShellExecute = false
+            };
+        }
+
+        public static ValidationResult ValidateForLaunch(ServerProfile profile, bool requireConfigFiles = true)
+        {
+            ArgumentNullException.ThrowIfNull(profile);
+
+            if (string.IsNullOrWhiteSpace(profile.Executable) || !IsValidServerExecutable(profile.Executable))
+            {
+                return ValidationResult.Fail(
+                    "No valid Arma 3 dedicated server executable selected. Expected arma3server_x64.exe (or arma3server.exe) under the server install path.");
+            }
+
+            if (!File.Exists(profile.Executable))
+            {
+                return ValidationResult.Fail(
+                    $"Arma 3 server executable not found:\n{profile.Executable}\nReselect Server File or run Steam Updater into the correct serverPath.");
+            }
+
+            var armaPath = profile.ArmaPath;
+            if (string.IsNullOrWhiteSpace(armaPath) || !Directory.Exists(armaPath))
+            {
+                return ValidationResult.Fail(
+                    $"Arma server directory does not exist:\n{armaPath}");
+            }
+
+            if (requireConfigFiles)
+            {
+                var profileDir = Path.Combine(armaPath, "Servers", profile.Id);
+                var config = Path.Combine(profileDir, "server_config.cfg");
+                var basic = Path.Combine(profileDir, "server_basic.cfg");
+                if (!Directory.Exists(profileDir) || !File.Exists(config) || !File.Exists(basic))
+                {
+                    return ValidationResult.Fail(
+                        "The profile does not exist in the game files.\nSave the profile first (writes server_config.cfg / server_basic.cfg).");
+                }
+            }
+
+            return ValidationResult.Success();
+        }
+
+        public static int CountSelectedLaunchMods(ServerProfile profile)
+        {
+            if (profile?.ProfileMods == null)
+                return 0;
+            return profile.ProfileMods.Count(m =>
+                m.ClientSideChecked || m.ServerSideChecked || m.HeadlessChecked);
+        }
+
+        public static IReadOnlyList<string> MissingDeployedMods(ServerProfile profile)
+        {
+            var missing = new List<string>();
+            if (profile?.ProfileMods == null || string.IsNullOrWhiteSpace(profile.ArmaPath))
+                return missing;
+
+            if (!Directory.Exists(profile.ArmaPath))
+                return missing;
+
+            HashSet<string> linkNames;
+            try
+            {
+                linkNames = Directory.EnumerateDirectories(profile.ArmaPath)
+                    .Select(d => new DirectoryInfo(d))
+                    .Where(d => d.Attributes.HasFlag(FileAttributes.ReparsePoint) || Directory.Exists(d.FullName))
+                    .Select(d => d.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return missing;
+            }
+
+            foreach (var mod in profile.ProfileMods.Where(m =>
+                         m.ServerSideChecked || m.ClientSideChecked || m.HeadlessChecked || m.OptChecked))
+            {
+                var folder = $"@{Functions.SafeName(mod.Name)}";
+                if (!linkNames.Contains(folder))
+                    missing.Add(folder);
+            }
+
+            return missing;
+        }
+
+        public static Process StartServer(string executable, string arguments, string workingDirectory)
+        {
+            var psi = CreateStartInfo(executable, arguments, workingDirectory);
+            return Process.Start(psi)
+                   ?? throw new InvalidOperationException($"Process.Start returned null for \"{executable}\".");
+        }
+
+        private static IEnumerable<string> DistinctExistingDirs(params string?[] paths)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in paths)
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                    continue;
+                string full;
+                try { full = Path.GetFullPath(path); }
+                catch { continue; }
+                if (!Directory.Exists(full))
+                    continue;
+                if (seen.Add(full))
+                    yield return full;
+            }
+        }
+    }
+}

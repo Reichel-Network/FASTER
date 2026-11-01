@@ -554,8 +554,11 @@ namespace FASTER.Services.A3S
 
     public sealed class A3SEventApplyOptions
     {
+        /// <summary>Map event addons onto Client (+ <c>-mod</c>). Default on.</summary>
         public bool ApplyClient { get; init; } = true;
-        public bool ApplyServer { get; init; } = true;
+        /// <summary>Map onto Server-only (+ <c>-serverMod</c>). Default off — typical A3S events are client modsets.</summary>
+        public bool ApplyServer { get; init; } = false;
+        /// <summary>Map onto Headless. Default on.</summary>
         public bool ApplyHeadless { get; init; } = true;
         public bool ClearExistingOnTargetLists { get; init; } = true;
         public bool SetLoadPriority { get; init; } = true;
