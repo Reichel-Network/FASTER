@@ -1,40 +1,16 @@
-# FasterDiscordBot
+# FasterDiscordBot — **deprecated**
 
-Slash-command bot for the game box. Calls FASTER’s localhost A3S API (`127.0.0.1:8787`).
+The standalone `FasterDiscordBot.exe` is **deprecated**. Slash commands now run **inside FASTER** (`FasterDiscordBotHost`).
 
-## Commands
+## Use FASTER instead
 
-| Slash | Effect |
-| --- | --- |
-| `/faster-status` | `GET /v1/status` |
-| `/faster-events repo:` or `url:` | List modsets |
-| `/faster-deploy event:` + `repo:` **or** `url:` (+ optional `profile:`) | Sync → apply → deploy → **auto-launch** |
+1. Open **Settings → Discord bot (in-process)**.
+2. Enable **Enable Discord bot**, paste the bot token, set Guild ID (recommended), optional allowlists / default repo.
+3. Optionally keep **Localhost API** enabled if other tools need HTTP; Discord no longer requires a separate process.
+4. **Save** and **restart FASTER**.
 
-## Environment
+Env overrides (same names as before): `DISCORD_BOT_ENABLED`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_ALLOW_USER_IDS`, `DISCORD_ALLOW_ROLE_IDS`, `FASTER_DEFAULT_REPO`.
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `DISCORD_BOT_TOKEN` | yes | Discord application bot token |
-| `FASTER_LOCAL_API_TOKEN` | yes | Same bearer token as FASTER local API |
-| `FASTER_LOCAL_API_BASE` | no | Default `http://127.0.0.1:8787` |
-| `DISCORD_GUILD_ID` | recommended | Guild for instant command registration |
-| `DISCORD_ALLOW_USER_IDS` | recommended | Comma-separated Discord user IDs |
-| `DISCORD_ALLOW_ROLE_IDS` | optional | Comma-separated role IDs |
-| `FASTER_DEFAULT_REPO` | optional | Default Mode A repo |
-| `FASTER_DEFAULT_PROFILE` | optional | Default profile name |
+On the game box: stop `FasterDiscordBot.exe` / scheduled tasks and run only `C:\Tools\Faster\FASTER.exe`.
 
-## Run (game box)
-
-1. FASTER running with local API enabled (`FASTER_LOCAL_API_ENABLED=1` + token).
-2. Create a Discord Application → Bot → copy token; invite with `applications.commands` scope.
-3. Publish and start:
-
-```powershell
-dotnet publish .\FasterDiscordBot\FasterDiscordBot.csproj -c Release -r win-x64 --self-contained true -o C:\Tools\FasterDiscordBot
-$env:DISCORD_BOT_TOKEN = "…"
-$env:FASTER_LOCAL_API_TOKEN = "…"
-$env:DISCORD_GUILD_ID = "…"
-C:\Tools\FasterDiscordBot\FasterDiscordBot.exe
-```
-
-Do not commit tokens.
+This project folder is kept for reference only and is no longer built by `FASTER.sln`.

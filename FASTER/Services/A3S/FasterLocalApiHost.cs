@@ -60,7 +60,8 @@ namespace FASTER.Services.A3S
         /// Returns null when disabled or token missing.
         /// </summary>
         public static FasterLocalApiHost? TryCreateFromSettings(
-            Func<ServerProfile, Task>? launchAsync = null)
+            Func<ServerProfile, Task>? launchAsync = null,
+            A3SRemoteDeployService? sharedDeploy = null)
         {
             var settings = Settings.Default;
 
@@ -88,7 +89,7 @@ namespace FASTER.Services.A3S
             else if (settings.a3sLocalApiPort > 0)
                 port = settings.a3sLocalApiPort;
 
-            var deploy = new A3SRemoteDeployService(launchAsync: launchAsync);
+            var deploy = sharedDeploy ?? new A3SRemoteDeployService(launchAsync: launchAsync);
             return new FasterLocalApiHost(deploy, token!, port);
         }
 

@@ -144,6 +144,12 @@ namespace FASTER.Views
                 : 8787).ToString();
             IA3SLocalApiToken.Text = Properties.Settings.Default?.a3sLocalApiToken ?? string.Empty;
             IA3SLocalApiDefaultProfile.Text = Properties.Settings.Default?.a3sLocalApiDefaultProfile ?? string.Empty;
+            IDiscordBotEnabled.IsChecked = Properties.Settings.Default?.discordBotEnabled ?? false;
+            IDiscordBotToken.Text = Properties.Settings.Default?.discordBotToken ?? string.Empty;
+            IDiscordGuildId.Text = Properties.Settings.Default?.discordGuildId ?? string.Empty;
+            IDiscordAllowUserIds.Text = Properties.Settings.Default?.discordAllowUserIds ?? string.Empty;
+            IDiscordAllowRoleIds.Text = Properties.Settings.Default?.discordAllowRoleIds ?? string.Empty;
+            IDiscordDefaultRepo.Text = Properties.Settings.Default?.discordDefaultRepo ?? string.Empty;
             Slider.Value = Properties.Settings.Default.CliWorkers;
             NumericUpDown.Value = Slider.Value;
         }
@@ -201,6 +207,12 @@ namespace FASTER.Views
                     : 8787;
             Properties.Settings.Default.a3sLocalApiToken = IA3SLocalApiToken.Text?.Trim() ?? string.Empty;
             Properties.Settings.Default.a3sLocalApiDefaultProfile = IA3SLocalApiDefaultProfile.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.discordBotEnabled = IDiscordBotEnabled.IsChecked ?? false;
+            Properties.Settings.Default.discordBotToken = IDiscordBotToken.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.discordGuildId = IDiscordGuildId.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.discordAllowUserIds = IDiscordAllowUserIds.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.discordAllowRoleIds = IDiscordAllowRoleIds.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.discordDefaultRepo = IDiscordDefaultRepo.Text?.Trim() ?? string.Empty;
             Properties.Settings.Default.Save();
         }
 
