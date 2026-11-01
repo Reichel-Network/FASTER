@@ -442,5 +442,13 @@ namespace FASTER.Services.A3S
         public string Login { get; init; } = string.Empty;
         public string Password { get; init; } = string.Empty;
         public Uri ContentRoot { get; init; } = new("https://localhost/");
+
+        /// <summary>
+        /// When true, SFTP uploads use paths relative to the session working directory
+        /// (login home / chroot), not absolute SSH filesystem paths.
+        /// Set for host-only UploadUrl values such as <c>85.190.116.165</c> where the
+        /// repository root is the SFTP home (e.g. <c>/repository</c>), not <c>/</c>.
+        /// </summary>
+        public bool SftpRelativeToHome { get; init; }
     }
 }

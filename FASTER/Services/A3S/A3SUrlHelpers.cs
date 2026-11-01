@@ -98,14 +98,58 @@ namespace FASTER.Services.A3S
             if (string.IsNullOrWhiteSpace(metadataFileName))
                 throw new ArgumentException("Metadata file name is required.", nameof(metadataFileName));
 
-            return new Uri(contentRoot, $"{A3SFolderName}/{metadataFileName.TrimStart('/')}");
+            // contentRoot MUST end with '/' or the last path segment is replaced
+            // (e.g. …/repository + .a3s/sync → …/.a3s/sync).
+            var root = EnsureTrailingSlash(contentRoot);
+            return new Uri(root, $"{A3SFolderName}/{metadataFileName.TrimStart('/')}");
         }
 
         public static Uri GetAddonFileUri(Uri contentRoot, string relativePathWithSlashes)
         {
             ArgumentNullException.ThrowIfNull(contentRoot);
             var relative = (relativePathWithSlashes ?? string.Empty).Replace('\\', '/').TrimStart('/');
-            return new Uri(contentRoot, relative);
+            var root = EnsureTrailingSlash(contentRoot);
+            return new Uri(root, relative);
+        }
+
+        /// <summary>
+        /// Map a remote upload URI to the SFTP path string passed to SSH.NET.
+        /// Host-only endpoints use home-relative paths (<c>.a3s/sync</c>);
+        /// host+/path endpoints keep absolute paths (<c>/repository/.a3s/sync</c>).
+        /// </summary>
+        public static string GetSftpRemotePath(Uri remoteUri, A3SUploadEndpoint? endpoint)
+        {
+            ArgumentNullException.ThrowIfNull(remoteUri);
+            var absolute = Uri.UnescapeDataString(remoteUri.AbsolutePath);
+            if (string.IsNullOrEmpty(absolute) || absolute == "/")
+                throw new InvalidOperationException($"SFTP remote path missing for {remoteUri}.");
+
+            if (endpoint?.SftpRelativeToHome == true)
+            {
+                var relative = absolute.TrimStart('/');
+                if (string.IsNullOrEmpty(relative))
+                    throw new InvalidOperationException($"SFTP relative remote path missing for {remoteUri}.");
+                return relative;
+            }
+
+            return absolute;
+        }
+
+        public static bool IsSftpHostOnlyContentRoot(Uri contentRoot)
+        {
+            ArgumentNullException.ThrowIfNull(contentRoot);
+            var path = contentRoot.AbsolutePath;
+            return string.IsNullOrEmpty(path) || path == "/";
+        }
+
+        private static Uri EnsureTrailingSlash(Uri contentRoot)
+        {
+            var s = contentRoot.ToString();
+            if (s.EndsWith('/'))
+                return contentRoot;
+            if (!Uri.TryCreate(s + "/", UriKind.Absolute, out var withSlash))
+                throw new ArgumentException($"Invalid content root URI '{contentRoot}'.", nameof(contentRoot));
+            return withSlash;
         }
 
         /// <summary>Build a content-root URI from bridge-parsed protocol info (HTTP/HTTPS Phase 1).</summary>
@@ -193,6 +237,10 @@ namespace FASTER.Services.A3S
 
                 var uri = BuildUriFromHostPath("sftp", repository.UploadUrl, repository.UploadPort,
                     defaultHttpsPort: "22", defaultHttpPort: "22", defaultPortOverride: "22");
+                // Host-only UploadUrl → content root AbsolutePath is "/". Absolute SFTP
+                // writes then hit "/.a3s/…" at the SSH root (Permission denied). The repo
+                // lives in the login home / working directory — use relative paths.
+                var relativeToHome = IsSftpHostOnlyContentRoot(uri);
                 return new A3SUploadEndpoint
                 {
                     Protocol = "SFTP",
@@ -200,7 +248,8 @@ namespace FASTER.Services.A3S
                     Port = string.IsNullOrWhiteSpace(repository.UploadPort) ? "22" : repository.UploadPort.Trim(),
                     Login = string.IsNullOrWhiteSpace(repository.UploadLogin) ? "anonymous" : repository.UploadLogin.Trim(),
                     Password = repository.UploadPassword ?? string.Empty,
-                    ContentRoot = uri
+                    ContentRoot = uri,
+                    SftpRelativeToHome = relativeToHome
                 };
             }
 
