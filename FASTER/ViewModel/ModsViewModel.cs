@@ -263,6 +263,25 @@ namespace FASTER.ViewModel
                 DisplayMessage("Steam Login Failed");
         }
 
+        /// <summary>
+        /// Refresh Steam infos, then download only mods marked <see cref="ArmaModStatus.UpdateRequired"/>.
+        /// Used by Repositories → Update &amp; Publish. Returns an <see cref="UpdateState"/> constant.
+        /// </summary>
+        public async Task<int> UpdateOutdatedModsAsync(bool navigateToConsole = false)
+        {
+            await CheckForUpdates().ConfigureAwait(true);
+            var outdated = new ObservableCollection<ArmaMod>(
+                ModsCollection.ArmaMods.Where(m => !m.IsLocal && m.Status == ArmaModStatus.UpdateRequired));
+            if (outdated.Count == 0)
+                return UpdateState.Success;
+
+            if (navigateToConsole)
+                MainWindow.Instance.NavigateToConsole();
+
+            return await MainWindow.Instance.SteamUpdaterViewModel.RunModsUpdater(outdated)
+                .ConfigureAwait(true);
+        }
+
         public void PurgeAndReinstallMod(ArmaMod mod)
         {
             if (mod == null) return;

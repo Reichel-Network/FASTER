@@ -663,6 +663,101 @@ namespace FASTER.ViewModel
             }
         }
 
+        /// <summary>
+        /// Host chore: check Workshop → download Update Required only → Deploy All → Build+Publish.
+        /// </summary>
+        public async Task UpdateAndPublishSelectedAsync()
+        {
+            if (!TryBeginWork(out var repo, out var token, requireLocalPath: false))
+                return;
+
+            try
+            {
+                var root = A3SBuildService.ResolvePublishRoot(repo);
+                AppendLog($"Update & Publish started: {repo.Name} → publish root {root}");
+                StatusText = $"Update & Publish \"{repo.Name}\"…";
+
+                // 1) Steam: refresh infos + download outdated Workshop mods only
+                var modsVm = MainWindow.Instance.ModsViewModel;
+                StatusText = "Checking Workshop mod updates…";
+                AppendLog("Checking Workshop mod infos…");
+                await modsVm.CheckForUpdates().ConfigureAwait(true);
+                token.ThrowIfCancellationRequested();
+
+                var outdated = modsVm.ModsCollection.ArmaMods
+                    .Where(m => !m.IsLocal && m.Status == ArmaModStatus.UpdateRequired)
+                    .ToList();
+                AppendLog(outdated.Count == 0
+                    ? "No Workshop mods marked Update Required."
+                    : $"Updating {outdated.Count} outdated Workshop mod(s): "
+                      + string.Join(", ", outdated.Select(m => $"{m.Name} ({m.WorkshopId})")));
+
+                if (outdated.Count > 0)
+                {
+                    StatusText = $"Downloading {outdated.Count} Workshop update(s)…";
+                    var updateState = await MainWindow.Instance.SteamUpdaterViewModel
+                        .RunModsUpdater(new ObservableCollection<ArmaMod>(outdated))
+                        .ConfigureAwait(true);
+                    token.ThrowIfCancellationRequested();
+                    if (updateState == UpdateState.LoginFailed)
+                        throw new InvalidOperationException("Steam login failed — Workshop updates aborted.");
+                    if (updateState == UpdateState.Cancelled)
+                        throw new OperationCanceledException();
+                    if (updateState == UpdateState.Error)
+                        throw new InvalidOperationException("Workshop update finished with errors — aborting publish.");
+                    AppendLog("Workshop downloads finished.");
+                    Settings.Default.Save();
+                }
+
+                // 2) Refresh Deployment symlinks into Install Path / publish root
+                token.ThrowIfCancellationRequested();
+                StatusText = "Deploying mods to Install Path…";
+                AppendLog("Deploy All…");
+                MainWindow.Instance.DeployViewModel.DeployAll();
+
+                // 3) Build + upload
+                token.ThrowIfCancellationRequested();
+                StatusText = $"Publishing \"{repo.Name}\"…";
+                AppendLog($"Publish (BuildFirst) started: {repo.Name} (upload={repo.UploadProtocol})");
+                var progress = CreateProgress();
+                var result = await _publishService.PublishAsync(
+                        repo,
+                        new A3SUploadOptions { BuildFirst = true },
+                        progress,
+                        token)
+                    .ConfigureAwait(true);
+
+                foreach (var err in result.Errors)
+                    AppendLog("  Error: " + err);
+
+                AppendLog(
+                    $"Update & Publish complete: revision {result.Revision}, uploaded {result.UploadedFiles} file(s), " +
+                    $"metadata {result.UploadedMetadataFiles}, skipped {result.SkippedUnchanged}, failed {result.Failed}, " +
+                    $"workshopUpdated={outdated.Count}.");
+                _repositoryService.Persist();
+                StatusText = result.Failed > 0
+                    ? $"Update & Publish finished with {result.Failed} upload failure(s) — rev {result.Revision}."
+                    : $"Update & Publish OK — \"{repo.Name}\" rev {result.Revision}"
+                      + (outdated.Count > 0 ? $" ({outdated.Count} Workshop update(s))." : " (no Workshop updates).");
+                DisplayMessage(StatusText);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "Update & Publish cancelled.";
+                AppendLog("Update & Publish cancelled.");
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Update & Publish failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                EndWork();
+            }
+        }
+
         public void CancelWork()
         {
             try
