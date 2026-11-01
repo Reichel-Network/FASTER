@@ -620,12 +620,22 @@ namespace FASTER.ViewModel
 
         public void RefreshA3SRepositories()
         {
+            // ComboBox SelectedValue ↔ A3SRepositoryId: Clear() on ItemsSource briefly clears
+            // selection and can wipe the profile's attached repository id. Preserve it.
+            var attachedId = Profile.A3SRepositoryId;
+
             A3SRepositories.Clear();
             var repos = Properties.Settings.Default.a3sRepositories?.Repositories;
             if (repos != null)
             {
                 foreach (var repo in repos)
                     A3SRepositories.Add(repo);
+            }
+
+            if (!string.IsNullOrWhiteSpace(attachedId) &&
+                string.IsNullOrWhiteSpace(Profile.A3SRepositoryId))
+            {
+                Profile.A3SRepositoryId = attachedId;
             }
 
             // Nudge bindings so the attached repository ComboBox re-selects.
@@ -670,27 +680,32 @@ namespace FASTER.ViewModel
 
         public async Task ApplyAttachedA3SEventAsync()
         {
-            if (SelectedA3SRepository == null || string.IsNullOrWhiteSpace(Profile.A3SEventName))
+            var service = new A3SEventService();
+            // Capture before LoadData: refreshing A3SRepositories can clear ComboBox SelectedValue
+            // and wipe Profile.A3SRepositoryId, making SelectedA3SRepository null mid-apply.
+            var repo = service.ResolveRepositoryForApply(Profile, SelectedA3SRepository);
+            var eventName = Profile.A3SEventName;
+            var guard = A3SEventService.GetApplyPrerequisiteError(repo, eventName);
+            if (guard != null)
             {
-                DisplayMessage("Attach an A3S repository and event name first.");
+                DisplayMessage(guard);
                 return;
             }
 
             try
             {
-                var service = new A3SEventService();
-                var events = await service.ListEventsAsync(SelectedA3SRepository).ConfigureAwait(true);
+                var events = await service.ListEventsAsync(repo!).ConfigureAwait(true);
                 var evt = events.FirstOrDefault(e =>
-                    string.Equals(e.Name, Profile.A3SEventName, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(e.Name, eventName, StringComparison.OrdinalIgnoreCase));
                 if (evt == null)
                 {
-                    DisplayMessage($"Event \"{Profile.A3SEventName}\" not found in repository metadata.");
+                    DisplayMessage($"Event \"{eventName}\" not found in repository metadata.");
                     return;
                 }
 
                 LoadData();
                 var result = service.ApplyEventToProfile(evt, Profile);
-                service.AttachEventToProfile(Profile, SelectedA3SRepository, evt.Name);
+                service.AttachEventToProfile(Profile, repo!, evt.Name);
                 DisplayMessage(
                     $"Applied \"{result.EventName}\": matched {result.MatchedMods.Count}, missing {result.MissingAddons.Count}.");
             }
@@ -702,16 +717,18 @@ namespace FASTER.ViewModel
 
         public async Task WriteA3SFavoriteServerAsync()
         {
-            if (SelectedA3SRepository == null)
+            var service = new A3SEventService();
+            var repo = service.ResolveRepositoryForApply(Profile, SelectedA3SRepository);
+            if (repo == null)
             {
-                DisplayMessage("Attach an A3S repository first.");
+                DisplayMessage("Select an A3S repository first.");
                 return;
             }
 
             try
             {
-                var fav = await new A3SEventService()
-                    .WriteFavoriteServerFromProfileAsync(SelectedA3SRepository, Profile)
+                var fav = await service
+                    .WriteFavoriteServerFromProfileAsync(repo, Profile)
                     .ConfigureAwait(true);
                 DisplayMessage($"Wrote favorite \"{fav.Name}\" ({fav.IpAddress}:{fav.Port}) into autoconfig.");
             }
@@ -723,23 +740,27 @@ namespace FASTER.ViewModel
 
         public async Task SyncAttachedEventDeployLaunchAsync()
         {
-            if (SelectedA3SRepository == null || string.IsNullOrWhiteSpace(Profile.A3SEventName))
+            var service = new A3SEventService();
+            var repo = service.ResolveRepositoryForApply(Profile, SelectedA3SRepository);
+            var eventName = Profile.A3SEventName;
+            var guard = A3SEventService.GetApplyPrerequisiteError(repo, eventName);
+            if (guard != null)
             {
-                DisplayMessage("Attach an A3S repository and event first.");
+                DisplayMessage(guard);
                 return;
             }
 
             try
             {
-                DisplayMessage($"Sync event → Deploy → Launch: {Profile.A3SEventName}…");
+                DisplayMessage($"Sync event → Deploy → Launch: {eventName}…");
                 Action? deploy = null;
                 if (MainWindow.HasLoaded())
                     deploy = () => MainWindow.Instance.DeployViewModel.DeployAll();
 
-                await new A3SEventService().SyncEventDeployLaunchAsync(
-                        SelectedA3SRepository,
+                await service.SyncEventDeployLaunchAsync(
+                        repo!,
                         Profile,
-                        Profile.A3SEventName,
+                        eventName!,
                         deployAll: deploy,
                         launchAsync: async _ =>
                         {

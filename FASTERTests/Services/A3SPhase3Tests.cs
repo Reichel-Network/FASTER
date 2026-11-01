@@ -200,5 +200,117 @@ namespace FASTER.Services.Tests
             Assert.That(link.Description, Is.EqualTo("desc"));
         }
 
+        [Test]
+        public void GetApplyPrerequisiteError_NullRepository_ReturnsOperatorMessage()
+        {
+            Assert.That(
+                A3SEventService.GetApplyPrerequisiteError(null, "Arma Domina"),
+                Is.EqualTo("Select an A3S repository first."));
+        }
+
+        [Test]
+        public void GetApplyPrerequisiteError_BlankEvent_ReturnsOperatorMessage()
+        {
+            var repo = new A3SRepository("reichel", "https://example.test/.a3s/autoconfig");
+            Assert.That(
+                A3SEventService.GetApplyPrerequisiteError(repo, "  "),
+                Is.EqualTo("Select an A3S event first."));
+            Assert.That(A3SEventService.GetApplyPrerequisiteError(repo, "Arma Domina"), Is.Null);
+        }
+
+        [Test]
+        public void AttachEventToProfile_NullRepository_ThrowsArgumentNull()
+        {
+            var service = new A3SEventService(
+                new JsonA3SMetadataStore(FixturePath("a3s-tiny-all.json")),
+                new A3SRepositoryService());
+            var profile = new ServerProfile("Ops", false);
+
+            var ex = Assert.Throws<ArgumentNullException>(() =>
+                service.AttachEventToProfile(profile, null!, "Arma Domina"));
+            Assert.That(ex!.ParamName, Is.EqualTo("repository"));
+        }
+
+        [Test]
+        public void ApplyAndAttach_HappyPath_PreservesCapturedRepository()
+        {
+            var profile = new ServerProfile("Ops", false)
+            {
+                ProfileMods = new List<ProfileMod>
+                {
+                    new() { Name = "ACE", Id = 1 },
+                    new() { Name = "CBA", Id = 2 }
+                }
+            };
+
+            var evt = new A3SEventInfo
+            {
+                Name = "Arma Domina",
+                AddonNames = new Dictionary<string, bool>
+                {
+                    ["@ACE"] = true,
+                    ["CBA"] = true
+                }
+            };
+
+            var repo = new A3SRepository("reichel", "https://example.test/.a3s/autoconfig");
+            var service = new A3SEventService(
+                new JsonA3SMetadataStore(FixturePath("a3s-tiny-all.json")),
+                new A3SRepositoryService());
+
+            // Simulate the Profile apply path: capture repo, refresh mods, apply, attach with capture
+            // (not re-reading a UI Selected* that LoadData/ComboBox Clear may have nulled).
+            var captured = repo;
+            Assert.That(A3SEventService.GetApplyPrerequisiteError(captured, evt.Name), Is.Null);
+
+            var result = service.ApplyEventToProfile(evt, profile, new A3SEventApplyOptions
+            {
+                ApplyClient = true,
+                ApplyServer = false,
+                ApplyHeadless = true
+            });
+            service.AttachEventToProfile(profile, captured, evt.Name);
+
+            Assert.That(result.MatchedMods.Count, Is.EqualTo(2));
+            Assert.That(profile.A3SRepositoryId, Is.EqualTo(repo.Id));
+            Assert.That(profile.A3SEventName, Is.EqualTo("Arma Domina"));
+            Assert.That(profile.ProfileMods.First(m => m.Name == "ACE").ClientSideChecked, Is.True);
+            Assert.That(profile.ProfileMods.First(m => m.Name == "ACE").ServerSideChecked, Is.False);
+            Assert.That(profile.ProfileMods.First(m => m.Name == "ACE").HeadlessChecked, Is.True);
+        }
+
+        [Test]
+        public void ResolveRepositoryForApply_UsesSelectedOrAttachedId()
+        {
+            var selected = new A3SRepository("selected", "https://selected.example/.a3s/autoconfig");
+            var repoService = new A3SRepositoryService();
+            var attached = repoService.ImportByAutoconfigUrl(
+                $"ApplyResolve-{Guid.NewGuid():N}".Substring(0, 20),
+                "https://attached.example/.a3s/autoconfig");
+
+            try
+            {
+                var profile = new ServerProfile("Ops", false)
+                {
+                    A3SRepositoryId = attached.Id,
+                    A3SEventName = "Arma Domina"
+                };
+
+                var service = new A3SEventService(
+                    new JsonA3SMetadataStore(FixturePath("a3s-tiny-all.json")),
+                    repoService);
+
+                Assert.That(service.ResolveRepositoryForApply(profile, selected), Is.SameAs(selected));
+                Assert.That(service.ResolveRepositoryForApply(profile, null)?.Id, Is.EqualTo(attached.Id));
+
+                profile.A3SRepositoryId = string.Empty;
+                Assert.That(service.ResolveRepositoryForApply(profile, null), Is.Null);
+            }
+            finally
+            {
+                repoService.Remove(attached.Id);
+            }
+        }
+
     }
 }

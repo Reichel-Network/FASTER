@@ -343,6 +343,31 @@ namespace FASTER.Services.A3S
                 string.Equals(r.Id, profile.A3SRepositoryId, StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>
+        /// Operator-facing guard before Apply / Sync→Deploy→Launch.
+        /// Returns null when ready; otherwise a clear message (never ArgumentNullException).
+        /// </summary>
+        public static string? GetApplyPrerequisiteError(A3SRepository? repository, string? eventName)
+        {
+            if (repository == null)
+                return "Select an A3S repository first.";
+            if (string.IsNullOrWhiteSpace(eventName))
+                return "Select an A3S event first.";
+            return null;
+        }
+
+        /// <summary>
+        /// Resolve a repository for apply: prefer an already-selected instance, else look up by
+        /// <see cref="ServerProfile.A3SRepositoryId"/> in the persisted repository list.
+        /// </summary>
+        public A3SRepository? ResolveRepositoryForApply(ServerProfile profile, A3SRepository? selected = null)
+        {
+            ArgumentNullException.ThrowIfNull(profile);
+            if (selected != null)
+                return selected;
+            return FindAttachedRepository(profile);
+        }
+
         public static A3SFavoriteServer BuildFavoriteFromProfile(ServerProfile profile, string repositoryName)
         {
             ArgumentNullException.ThrowIfNull(profile);
