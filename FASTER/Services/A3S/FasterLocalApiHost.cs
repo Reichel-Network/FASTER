@@ -253,6 +253,40 @@ namespace FASTER.Services.A3S
                     return;
                 }
 
+                if (method == "POST" && path is "/v1/start" or "/start")
+                {
+                    var profile = await ReadProfileNameAsync(context.Request).ConfigureAwait(false)
+                                  ?? context.Request.QueryString["profile"];
+                    try
+                    {
+                        var result = await _deploy.StartServerAsync(profile).ConfigureAwait(false);
+                        await WriteJsonAsync(context.Response, 200, result).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        await WriteJsonAsync(context.Response, 400, new { error = ex.Message }).ConfigureAwait(false);
+                    }
+
+                    return;
+                }
+
+                if (method == "POST" && path is "/v1/stop" or "/stop")
+                {
+                    var profile = await ReadProfileNameAsync(context.Request).ConfigureAwait(false)
+                                  ?? context.Request.QueryString["profile"];
+                    try
+                    {
+                        var result = _deploy.StopServer(profile);
+                        await WriteJsonAsync(context.Response, 200, result).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        await WriteJsonAsync(context.Response, 400, new { error = ex.Message }).ConfigureAwait(false);
+                    }
+
+                    return;
+                }
+
                 if (method == "GET" && path is "/" or "/v1" or "/health")
                 {
                     await WriteJsonAsync(context.Response, 200, new
@@ -260,7 +294,14 @@ namespace FASTER.Services.A3S
                         service = "FASTER local A3S API",
                         bind = "127.0.0.1",
                         port = _port,
-                        endpoints = new[] { "GET /v1/status", "GET /v1/events", "POST /v1/deploy" }
+                        endpoints = new[]
+                        {
+                            "GET /v1/status",
+                            "GET /v1/events",
+                            "POST /v1/deploy",
+                            "POST /v1/start",
+                            "POST /v1/stop"
+                        }
                     }).ConfigureAwait(false);
                     return;
                 }
@@ -278,6 +319,29 @@ namespace FASTER.Services.A3S
                     // ignore secondary failures
                 }
             }
+        }
+
+        private static async Task<string?> ReadProfileNameAsync(HttpListenerRequest request)
+        {
+            try
+            {
+                if (request.ContentLength64 == 0 && request.HasEntityBody == false)
+                    return null;
+                using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+                var raw = await reader.ReadToEndAsync().ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(raw))
+                    return null;
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("profile", out var profileProp)
+                    && profileProp.ValueKind == JsonValueKind.String)
+                    return profileProp.GetString();
+            }
+            catch
+            {
+                // ignore malformed body — callers may rely on query string only
+            }
+
+            return null;
         }
 
         private bool IsAuthorized(HttpListenerRequest request)

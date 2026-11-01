@@ -237,6 +237,12 @@ namespace FASTER.Services.A3S
                     case "faster-deploy":
                         await HandleDeployAsync(command).ConfigureAwait(false);
                         break;
+                    case "faster-start":
+                        await HandleStartAsync(command).ConfigureAwait(false);
+                        break;
+                    case "faster-stop":
+                        await HandleStopAsync(command).ConfigureAwait(false);
+                        break;
                     default:
                         await command.RespondAsync("Unknown command.", ephemeral: true).ConfigureAwait(false);
                         break;
@@ -332,6 +338,40 @@ namespace FASTER.Services.A3S
             }
         }
 
+        private async Task HandleStartAsync(SocketSlashCommand command)
+        {
+            await command.DeferAsync().ConfigureAwait(false);
+            var profile = GetOpt(command, "profile") ?? _defaultProfile;
+            try
+            {
+                var result = await _deploy.StartServerAsync(profile).ConfigureAwait(false);
+                var body = JsonSerializer.Serialize(result, JsonOptions);
+                await command.FollowupAsync($"{result.Message}\n```json\n{Trim(body, 1500)}\n```")
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await command.FollowupAsync($"Start failed: {ex.Message}").ConfigureAwait(false);
+            }
+        }
+
+        private async Task HandleStopAsync(SocketSlashCommand command)
+        {
+            await command.DeferAsync().ConfigureAwait(false);
+            var profile = GetOpt(command, "profile") ?? _defaultProfile;
+            try
+            {
+                var result = _deploy.StopServer(profile);
+                var body = JsonSerializer.Serialize(result, JsonOptions);
+                await command.FollowupAsync($"{result.Message}\n```json\n{Trim(body, 1500)}\n```")
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await command.FollowupAsync($"Stop failed: {ex.Message}").ConfigureAwait(false);
+            }
+        }
+
         private bool IsAllowed(IUser user, SocketGuildUser? guildUser)
         {
             if (_allowUsers.Count == 0 && _allowRoles.Count == 0)
@@ -363,11 +403,23 @@ namespace FASTER.Services.A3S
                 .AddOption("url", ApplicationCommandOptionType.String, "Autoconfig/sync URL (Mode B)", isRequired: false)
                 .AddOption("profile", ApplicationCommandOptionType.String, "FASTER server profile name", isRequired: false);
 
+            var start = new SlashCommandBuilder()
+                .WithName("faster-start")
+                .WithDescription("Start the Arma dedicated server for a FASTER profile")
+                .AddOption("profile", ApplicationCommandOptionType.String, "FASTER server profile name", isRequired: false);
+
+            var stop = new SlashCommandBuilder()
+                .WithName("faster-stop")
+                .WithDescription("Stop the Arma dedicated server (and HC) for a FASTER profile")
+                .AddOption("profile", ApplicationCommandOptionType.String, "FASTER server profile name", isRequired: false);
+
             return new ApplicationCommandProperties[]
             {
                 status.Build(),
                 events.Build(),
-                deploy.Build()
+                deploy.Build(),
+                start.Build(),
+                stop.Build()
             };
         }
 
