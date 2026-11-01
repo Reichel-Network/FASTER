@@ -138,6 +138,12 @@ namespace FASTER.Views
             IA3SPreferNativeSerializer.IsChecked = Properties.Settings.Default?.a3sPreferNativeSerializer ?? true;
             IA3SEnableMetadataBridgeFallback.IsChecked = Properties.Settings.Default?.a3sEnableMetadataBridgeFallback ?? false;
             IA3SMetadataBridgePath.Text = Properties.Settings.Default?.a3sMetadataBridgePath ?? string.Empty;
+            IA3SLocalApiEnabled.IsChecked = Properties.Settings.Default?.a3sLocalApiEnabled ?? false;
+            IA3SLocalApiPort.Text = (Properties.Settings.Default?.a3sLocalApiPort > 0
+                ? Properties.Settings.Default.a3sLocalApiPort
+                : 8787).ToString();
+            IA3SLocalApiToken.Text = Properties.Settings.Default?.a3sLocalApiToken ?? string.Empty;
+            IA3SLocalApiDefaultProfile.Text = Properties.Settings.Default?.a3sLocalApiDefaultProfile ?? string.Empty;
             Slider.Value = Properties.Settings.Default.CliWorkers;
             NumericUpDown.Value = Slider.Value;
         }
@@ -188,6 +194,13 @@ namespace FASTER.Views
             Properties.Settings.Default.a3sPreferNativeSerializer = IA3SPreferNativeSerializer.IsChecked ?? true;
             Properties.Settings.Default.a3sEnableMetadataBridgeFallback = IA3SEnableMetadataBridgeFallback.IsChecked ?? false;
             Properties.Settings.Default.a3sMetadataBridgePath = IA3SMetadataBridgePath.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.a3sLocalApiEnabled = IA3SLocalApiEnabled.IsChecked ?? false;
+            Properties.Settings.Default.a3sLocalApiPort =
+                int.TryParse(IA3SLocalApiPort.Text?.Trim(), out var apiPort) && apiPort is > 0 and <= 65535
+                    ? apiPort
+                    : 8787;
+            Properties.Settings.Default.a3sLocalApiToken = IA3SLocalApiToken.Text?.Trim() ?? string.Empty;
+            Properties.Settings.Default.a3sLocalApiDefaultProfile = IA3SLocalApiDefaultProfile.Text?.Trim() ?? string.Empty;
             Properties.Settings.Default.Save();
         }
 

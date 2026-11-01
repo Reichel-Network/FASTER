@@ -56,7 +56,8 @@ namespace FASTER.Services.A3S
 
             EnsureCollection();
 
-            var repo = new A3SRepository(name.Trim(), autoconfigUrl.Trim())
+            var normalizedUrl = A3SUrlHelpers.NormalizeAutoconfigUrl(autoconfigUrl);
+            var repo = new A3SRepository(name.Trim(), normalizedUrl)
             {
                 LocalPath = string.IsNullOrWhiteSpace(localPath)
                     ? DeriveDefaultLocalPath(name.Trim())
@@ -66,6 +67,52 @@ namespace FASTER.Services.A3S
             _settings.a3sRepositories.Repositories.Add(repo);
             Persist();
             return repo;
+        }
+
+        /// <summary>
+        /// Find an existing repository by autoconfig/sync URL (normalized), or import one.
+        /// Used by remote deploy Mode B.
+        /// </summary>
+        public A3SRepository FindOrImportByAutoconfigUrl(
+            string autoconfigOrSyncUrl,
+            string? name = null,
+            string? localPath = null)
+        {
+            if (string.IsNullOrWhiteSpace(autoconfigOrSyncUrl))
+                throw new ArgumentException("Autoconfig / sync URL is required.", nameof(autoconfigOrSyncUrl));
+
+            EnsureCollection();
+            var normalized = A3SUrlHelpers.NormalizeAutoconfigUrl(autoconfigOrSyncUrl);
+            var existing = _settings.a3sRepositories.Repositories.FirstOrDefault(r =>
+                !string.IsNullOrWhiteSpace(r.AutoconfigUrl)
+                && string.Equals(
+                    A3SUrlHelpers.NormalizeAutoconfigUrl(r.AutoconfigUrl),
+                    normalized,
+                    StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+                return existing;
+
+            var derivedName = !string.IsNullOrWhiteSpace(name)
+                ? name.Trim()
+                : DeriveNameFromAutoconfigUrl(normalized);
+            return ImportByAutoconfigUrl(derivedName, normalized, localPath);
+        }
+
+        private static string DeriveNameFromAutoconfigUrl(string autoconfigUrl)
+        {
+            try
+            {
+                var root = A3SUrlHelpers.GetContentRootUri(autoconfigUrl);
+                var host = root.Host;
+                if (!string.IsNullOrWhiteSpace(host))
+                    return host;
+            }
+            catch
+            {
+                // fall through
+            }
+
+            return "a3s-" + Guid.NewGuid().ToString("N")[..8];
         }
 
         /// <summary>Add an existing repository instance and persist.</summary>
