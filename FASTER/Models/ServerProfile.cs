@@ -5,8 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Xml.Serialization;
+
+using FASTER.Services;
 
 namespace FASTER.Models
 {
@@ -29,6 +32,7 @@ namespace FASTER.Models
             currentProfiles.Add(p);
             Properties.Settings.Default.Profiles = currentProfiles;
             Properties.Settings.Default.Save();
+            EnsureFirewallRules(p);
             MainWindow.Instance.LoadServerProfiles();
         }
 
@@ -39,7 +43,24 @@ namespace FASTER.Models
             currentProfiles.Add(profile);
             Properties.Settings.Default.Profiles = currentProfiles;
             Properties.Settings.Default.Save();
+            EnsureFirewallRules(profile);
             MainWindow.Instance.LoadServerProfiles();
+        }
+
+        private static void EnsureFirewallRules(ServerProfile profile)
+        {
+            try
+            {
+                WindowsFirewallProfileRules.EnsureForProfile(profile);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Profile created, but Windows Firewall update failed:\n{ex.Message}",
+                    "FASTER — Firewall",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
     }
 
