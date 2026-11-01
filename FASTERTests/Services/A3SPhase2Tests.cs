@@ -61,6 +61,43 @@ namespace FASTER.Services.Tests
             Assert.That(endpoint.Protocol, Is.EqualTo("SFTP"));
             Assert.That(endpoint.ContentRoot.Scheme, Is.EqualTo("sftp"));
             Assert.That(endpoint.ContentRoot.Host, Is.EqualTo("files.example.test"));
+            Assert.That(endpoint.SftpRelativeToHome, Is.False);
+            Assert.That(
+                A3SUrlHelpers.GetSftpRemotePath(A3SUrlHelpers.GetMetadataUri(endpoint.ContentRoot, "sync"), endpoint),
+                Is.EqualTo("/repo/.a3s/sync"));
+        }
+
+        [Test]
+        public void ResolveUploadEndpoint_SftpHostOnly_UsesHomeRelativePaths()
+        {
+            var repo = new A3SRepository("pub", "https://arma.game.reichel.network/.a3s/autoconfig")
+            {
+                UploadProtocol = "SFTP",
+                UploadUrl = "85.190.116.165",
+                UploadPort = "22",
+                UploadLogin = "armasync"
+            };
+            var endpoint = A3SUrlHelpers.ResolveUploadEndpoint(repo);
+            Assert.That(endpoint.SftpRelativeToHome, Is.True);
+            Assert.That(endpoint.ContentRoot.AbsolutePath, Is.EqualTo("/"));
+
+            var meta = A3SUrlHelpers.GetMetadataUri(endpoint.ContentRoot, "sync");
+            Assert.That(meta.AbsolutePath, Is.EqualTo("/.a3s/sync"));
+            Assert.That(A3SUrlHelpers.GetSftpRemotePath(meta, endpoint), Is.EqualTo(".a3s/sync"));
+
+            var addon = A3SUrlHelpers.GetAddonFileUri(endpoint.ContentRoot, "@mod/addons/x.pbo");
+            Assert.That(A3SUrlHelpers.GetSftpRemotePath(addon, endpoint), Is.EqualTo("@mod/addons/x.pbo"));
+        }
+
+        [Test]
+        public void GetMetadataUri_RequiresTrailingSlashOnContentRoot()
+        {
+            // Without normalization, Uri treats the last segment as a file and replaces it.
+            var broken = new Uri("sftp://files.example.test/repository");
+            Assert.That(new Uri(broken, ".a3s/sync").AbsolutePath, Is.EqualTo("/.a3s/sync"));
+
+            var fixedPath = A3SUrlHelpers.GetMetadataUri(broken, "sync").AbsolutePath;
+            Assert.That(fixedPath, Is.EqualTo("/repository/.a3s/sync"));
         }
 
         [Test]

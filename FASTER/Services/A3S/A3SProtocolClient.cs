@@ -164,9 +164,7 @@ namespace FASTER.Services.A3S
                 var port = remoteUri.IsDefaultPort ? 22 : remoteUri.Port;
                 var username = string.IsNullOrWhiteSpace(endpoint?.Login) ? "anonymous" : endpoint!.Login;
                 var password = endpoint?.Password ?? string.Empty;
-                var remotePath = Uri.UnescapeDataString(remoteUri.AbsolutePath);
-                if (string.IsNullOrEmpty(remotePath) || remotePath == "/")
-                    throw new InvalidOperationException($"SFTP remote path missing for {remoteUri}.");
+                var remotePath = A3SUrlHelpers.GetSftpRemotePath(remoteUri, endpoint);
 
                 using var client = new SftpClient(host, port, username, password);
                 client.ConnectionInfo.Timeout = TimeSpan.FromMinutes(2);
@@ -189,22 +187,25 @@ namespace FASTER.Services.A3S
         {
             var normalized = remoteFilePath.Replace('\\', '/');
             var lastSlash = normalized.LastIndexOf('/');
-            if (lastSlash <= 0)
+            // Relative single-segment files ("sync") need no dirs; "a/.b" and "/a/b" do.
+            if (lastSlash < 0)
+                return;
+            if (lastSlash == 0 && normalized.StartsWith('/'))
                 return;
 
             var dir = normalized[..lastSlash];
             if (string.IsNullOrEmpty(dir) || client.Exists(dir))
-            {
-                if (!string.IsNullOrEmpty(dir) && client.Exists(dir))
-                    return;
-            }
+                return;
 
+            var absolute = dir.StartsWith('/');
             var parts = dir.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            var current = dir.StartsWith('/') ? "/" : string.Empty;
+            var current = absolute ? "/" : string.Empty;
             foreach (var part in parts)
             {
-                current = current.EndsWith('/') ? current + part : current + "/" + part;
-                if (current == "/")
+                current = current.Length == 0 || current.EndsWith('/')
+                    ? current + part
+                    : current + "/" + part;
+                if (current is "/" or "")
                     continue;
                 if (!client.Exists(current))
                     client.CreateDirectory(current);
