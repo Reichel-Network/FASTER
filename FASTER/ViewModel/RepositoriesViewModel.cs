@@ -736,9 +736,12 @@ namespace FASTER.ViewModel
                 return;
             }
 
-            if (SelectedRepository == null)
+            // Capture before EnsureProfileModsLoaded / attach — never re-read SelectedRepository after UI churn.
+            var repo = SelectedRepository;
+            var guard = A3SEventService.GetApplyPrerequisiteError(repo, SelectedEvent.Name);
+            if (guard != null)
             {
-                DisplayMessage("Select a repository first.");
+                DisplayMessage(guard);
                 return;
             }
 
@@ -754,7 +757,7 @@ namespace FASTER.ViewModel
                         ApplyServer = ApplyEventServer,
                         ApplyHeadless = ApplyEventHeadless
                     });
-                _eventService.AttachEventToProfile(SelectedProfileForEvent, SelectedRepository, SelectedEvent.Name);
+                _eventService.AttachEventToProfile(SelectedProfileForEvent, repo!, SelectedEvent.Name);
 
                 AppendLog(
                     $"Applied event \"{result.EventName}\" → profile \"{SelectedProfileForEvent.Name}\": " +
