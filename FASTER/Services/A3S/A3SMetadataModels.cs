@@ -398,6 +398,15 @@ namespace FASTER.Services.A3S
 
         /// <summary>When true, skip rewriting autoconfig (keep existing classic file if any).</summary>
         public bool SkipAutoconfig { get; init; }
+
+        /// <summary>
+        /// When true, never write sibling <c>*.zsync</c> control files (FTP/SFTP-only trees).
+        /// Default is auto: generate for HTTP(S)/LOCAL client-facing repos.
+        /// </summary>
+        public bool SkipZsync { get; init; }
+
+        /// <summary>When true, always generate <c>*.zsync</c> regardless of protocol heuristics.</summary>
+        public bool ForceZsync { get; init; }
     }
 
     public sealed class A3SBuildResult
@@ -409,6 +418,9 @@ namespace FASTER.Services.A3S
         public int NewAddons { get; init; }
         public int UpdatedAddons { get; init; }
         public int DeletedAddons { get; init; }
+        public int ZsyncGenerated { get; init; }
+        public int ZsyncSkipped { get; init; }
+        public int ZsyncFailed { get; init; }
         public A3SSyncTreeNode SyncRoot { get; init; } = new();
         public A3SServerInfo ServerInfo { get; init; } = new();
         public A3SChangelogs Changelogs { get; init; } = new();

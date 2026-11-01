@@ -173,6 +173,17 @@ namespace FASTER.Services.A3S
                         .ConfigureAwait(false);
                     uploaded++;
                     completedBytes += leaf.Size;
+
+                    // HTTP mirrors need sibling *.zsync (not listed in sync tree).
+                    var localZsync = localPath + A3SBuildService.ZsyncExtension;
+                    if (File.Exists(localZsync))
+                    {
+                        var zsyncRelative = leaf.RelativePath + A3SBuildService.ZsyncExtension;
+                        var zsyncUri = A3SUrlHelpers.GetAddonFileUri(endpoint.ContentRoot, zsyncRelative);
+                        await _protocolClient.UploadAsync(localZsync, zsyncUri, endpoint, cancellationToken)
+                            .ConfigureAwait(false);
+                        uploaded++;
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

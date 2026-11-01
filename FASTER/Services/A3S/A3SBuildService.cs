@@ -146,9 +146,30 @@ namespace FASTER.Services.A3S
             if (changelogs.List.Count > 10)
                 changelogs.List = changelogs.List.OrderByDescending(c => c.Revision).Take(10).OrderBy(c => c.Revision).ToList();
 
+            // HTTP clients request leafName + ".zsync" beside every sync leaf (pbo, bisign, …).
+            // Metadata intentionally excludes .zsync from the sync tree (same as Java Build).
+            A3SZsyncGenerationResult? zsync = null;
+            if (A3SZsyncService.ShouldGenerateZsync(repository, options))
+            {
+                progress?.Report(new A3SSyncProgress { Message = "Processing *.zsync files…" });
+                zsync = await A3SZsyncService.GenerateForLeavesAsync(
+                        contentRoot,
+                        syncRoot,
+                        repository,
+                        previousSync,
+                        progress,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (zsync.Failed > 0)
+                {
+                    throw new IOException(
+                        $"zsync generation failed for {zsync.Failed} file(s): {string.Join("; ", zsync.Errors.Take(5))}");
+                }
+            }
+
             progress?.Report(new A3SSyncProgress
             {
-                Message = $"Writing .a3s metadata via bridge write --kind all (revision {revision}, {leaves.Count} files)…",
+                Message = $"Writing .a3s metadata (revision {revision}, {leaves.Count} files)…",
                 CompletedFiles = leaves.Count,
                 TotalFiles = leaves.Count,
                 CompletedBytes = totalBytes,
@@ -201,6 +222,9 @@ namespace FASTER.Services.A3S
                 NewAddons = changelog.NewAddons.Count,
                 UpdatedAddons = changelog.UpdatedAddons.Count,
                 DeletedAddons = changelog.DeletedAddons.Count,
+                ZsyncGenerated = zsync?.Generated ?? 0,
+                ZsyncSkipped = zsync?.SkippedUnchanged ?? 0,
+                ZsyncFailed = zsync?.Failed ?? 0,
                 SyncRoot = syncRoot,
                 ServerInfo = serverInfo,
                 Changelogs = changelogs
