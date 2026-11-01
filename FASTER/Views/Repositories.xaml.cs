@@ -95,6 +95,12 @@ namespace FASTER.Views
             await Vm.PublishSelectedAsync();
         }
 
+        private async void UpdateAndPublish_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.UpdateAndPublishSelectedAsync();
+        }
+
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             Vm?.CancelWork();
