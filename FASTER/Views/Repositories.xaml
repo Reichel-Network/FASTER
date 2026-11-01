@@ -247,7 +247,7 @@
                             <TextBox Grid.Column="2" Margin="0,0,5,0"
                                      Text="{Binding EditUploadProtocol, UpdateSourceTrigger=PropertyChanged}"
                                      mah:TextBoxHelper.UseFloatingWatermark="True"
-                                     mah:TextBoxHelper.Watermark="Upload protocol (HTTPS/SFTP)"/>
+                                     mah:TextBoxHelper.Watermark="Upload protocol (HTTPS/SFTP/LOCAL)"/>
                             <TextBox Grid.Column="3" Margin="0,0,5,0"
                                      Text="{Binding EditUploadUrl, UpdateSourceTrigger=PropertyChanged}"
                                      mah:TextBoxHelper.UseFloatingWatermark="True"

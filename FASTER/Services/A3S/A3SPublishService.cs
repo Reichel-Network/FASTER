@@ -79,6 +79,46 @@ namespace FASTER.Services.A3S
             }
 
             var localLeaves = localSync.EnumerateLeaves().ToList();
+            var endpoint = A3SUrlHelpers.ResolveUploadEndpoint(repository);
+
+            // Local SoT: Build already wrote .a3s under the publish root served by IIS/nginx/etc.
+            if (A3SUrlHelpers.IsLocalOnlyUpload(endpoint))
+            {
+                var localA3sDir = Path.Combine(contentRoot, A3SUrlHelpers.A3SFolderName);
+                var metaCount = 0;
+                if (Directory.Exists(localA3sDir))
+                {
+                    foreach (var name in MetadataFileNames)
+                    {
+                        if (File.Exists(Path.Combine(localA3sDir, name)))
+                            metaCount++;
+                    }
+                }
+
+                repository.LastRevision = serverInfo.Revision;
+                repository.LastPublishUtc = DateTime.UtcNow;
+                repository.LastCheckUtc = repository.LastPublishUtc;
+                repository.ProtocolHint = "HTTP";
+
+                progress?.Report(new A3SSyncProgress
+                {
+                    Message =
+                        $"Local publish complete (rev {serverInfo.Revision}, {localLeaves.Count} file(s) on disk, {metaCount} metadata). No remote upload.",
+                    CompletedFiles = localLeaves.Count,
+                    TotalFiles = localLeaves.Count
+                });
+
+                return new A3SUploadResult
+                {
+                    Revision = serverInfo.Revision,
+                    UploadedFiles = 0,
+                    SkippedUnchanged = localLeaves.Count,
+                    Failed = 0,
+                    UploadedMetadataFiles = metaCount,
+                    Errors = Array.Empty<string>()
+                };
+            }
+
             var remoteMap = remoteSync?.EnumerateLeaves()
                                 .ToDictionary(l => l.RelativePath, l => l, StringComparer.OrdinalIgnoreCase)
                             ?? new Dictionary<string, A3SSyncTreeLeafRef>(StringComparer.OrdinalIgnoreCase);
@@ -98,7 +138,6 @@ namespace FASTER.Services.A3S
                 toUpload.Add(leaf);
             }
 
-            var endpoint = A3SUrlHelpers.ResolveUploadEndpoint(repository);
             var errors = new List<string>();
             var uploaded = 0;
             var failed = 0;

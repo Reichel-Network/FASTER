@@ -193,6 +193,31 @@ namespace FASTER.Services.A3S
             if (string.IsNullOrEmpty(protocol))
                 protocol = "HTTPS";
 
+            // Local source-of-truth: Build writes .a3s under the publish root; a web server
+            // (or share) serves that folder. No remote upload.
+            if (protocol is "LOCAL" or "NONE" or "FILE")
+            {
+                Uri contentRoot;
+                if (!string.IsNullOrWhiteSpace(repository.AutoconfigUrl))
+                {
+                    contentRoot = GetContentRootUri(repository.AutoconfigUrl);
+                }
+                else
+                {
+                    contentRoot = new Uri("http://localhost/");
+                }
+
+                return new A3SUploadEndpoint
+                {
+                    Protocol = "LOCAL",
+                    HostAndPath = contentRoot.Host.TrimEnd('/') + contentRoot.AbsolutePath.TrimEnd('/'),
+                    Port = contentRoot.IsDefaultPort ? string.Empty : contentRoot.Port.ToString(),
+                    Login = string.Empty,
+                    Password = string.Empty,
+                    ContentRoot = contentRoot
+                };
+            }
+
             if (protocol is "HTTP" or "HTTPS" or "HTTP/WEBDAV" or "HTTPS/WEBDAV" or "HTTP_WEBDAV" or "HTTPS_WEBDAV")
             {
                 if (!string.IsNullOrWhiteSpace(repository.UploadUrl))
@@ -254,8 +279,12 @@ namespace FASTER.Services.A3S
             }
 
             throw new NotSupportedException(
-                $"Upload protocol '{protocol}' is not supported yet. Phase 2 implements HTTP(S) and SFTP.");
+                $"Upload protocol '{protocol}' is not supported. Use HTTP(S), SFTP, or LOCAL (build-only / local web SoT).");
         }
+
+        public static bool IsLocalOnlyUpload(A3SUploadEndpoint endpoint)
+            => endpoint != null
+               && string.Equals(endpoint.Protocol, "LOCAL", StringComparison.OrdinalIgnoreCase);
 
         private static Uri BuildUriFromHostPath(
             string scheme,
