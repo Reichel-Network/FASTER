@@ -392,6 +392,9 @@ namespace FASTER.Services.A3S
                 return false;
             if (fileName.Contains(A3SUrlHelpers.A3SFolderName, StringComparison.OrdinalIgnoreCase))
                 return false;
+            // IIS site root config must stay on disk but is not Arma3Sync content.
+            if (fileName.Equals("web.config", StringComparison.OrdinalIgnoreCase))
+                return false;
             return true;
         }
 

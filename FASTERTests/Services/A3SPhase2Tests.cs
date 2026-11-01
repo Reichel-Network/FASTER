@@ -126,6 +126,7 @@ namespace FASTER.Services.Tests
             Directory.CreateDirectory(Path.Combine(root, ".a3s-json"));
             await File.WriteAllTextAsync(Path.Combine(root, ".a3s-json", "all.json"), "{\"bridgeVersion\":1}");
             await File.WriteAllTextAsync(Path.Combine(root, "@mod", "addons", "mod.pbo.zsync"), "skip");
+            await File.WriteAllTextAsync(Path.Combine(root, "web.config"), "<configuration />");
 
             try
             {
@@ -136,6 +137,7 @@ namespace FASTER.Services.Tests
                 Assert.That(leaves[0].RelativePath, Is.EqualTo("@mod/addons/mod.pbo"));
                 Assert.That(leaves[0].Sha1, Is.EqualTo(Convert.ToHexString(SHA1.HashData(payload)).ToLowerInvariant()));
                 Assert.That(tree.AddonFolderRelativePaths(), Does.Contain("@mod"));
+                Assert.That(leaves.Any(l => l.RelativePath.Equals("web.config", StringComparison.OrdinalIgnoreCase)), Is.False);
             }
             finally
             {
