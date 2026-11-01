@@ -68,6 +68,19 @@ namespace FASTER.Services.Tests
         }
 
         [Test]
+        public void ResolveUploadEndpoint_Local_SkipsRemoteCredentials()
+        {
+            var repo = new A3SRepository("local", "http://game.shield-community.eu/.a3s/autoconfig")
+            {
+                UploadProtocol = "LOCAL"
+            };
+            var endpoint = A3SUrlHelpers.ResolveUploadEndpoint(repo);
+            Assert.That(endpoint.Protocol, Is.EqualTo("LOCAL"));
+            Assert.That(A3SUrlHelpers.IsLocalOnlyUpload(endpoint), Is.True);
+            Assert.That(endpoint.ContentRoot.Host, Is.EqualTo("game.shield-community.eu"));
+        }
+
+        [Test]
         public void ResolveUploadEndpoint_SftpHostOnly_UsesHomeRelativePaths()
         {
             var repo = new A3SRepository("pub", "https://arma.game.reichel.network/.a3s/autoconfig")
