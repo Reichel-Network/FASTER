@@ -49,16 +49,20 @@ internal static class Program
             if (guildId is ulong gid)
             {
                 var guild = client.GetGuild(gid);
-                if (guild == null)
-                    throw new InvalidOperationException($"Guild {gid} not found — invite the bot first.");
-                await guild.BulkOverwriteApplicationCommandAsync(cmds).ConfigureAwait(false);
-                Console.WriteLine($"Registered {cmds.Length} guild commands on {gid}.");
+                if (guild != null)
+                {
+                    await guild.BulkOverwriteApplicationCommandAsync(cmds).ConfigureAwait(false);
+                    Console.WriteLine($"Registered {cmds.Length} guild commands on {gid}.");
+                    return;
+                }
+
+                Console.WriteLine(
+                    $"Guild {gid} not visible yet — invite the bot, then restart. " +
+                    $"Invite: https://discord.com/oauth2/authorize?client_id={client.CurrentUser.Id}&scope=bot%20applications.commands&permissions=2147483648");
             }
-            else
-            {
-                await client.BulkOverwriteGlobalApplicationCommandsAsync(cmds).ConfigureAwait(false);
-                Console.WriteLine($"Registered {cmds.Length} global commands (may take up to ~1h to appear).");
-            }
+
+            await client.BulkOverwriteGlobalApplicationCommandsAsync(cmds).ConfigureAwait(false);
+            Console.WriteLine($"Registered {cmds.Length} global commands (may take up to ~1h to appear).");
         };
 
         client.SlashCommandExecuted += async command =>
