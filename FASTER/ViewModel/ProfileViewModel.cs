@@ -1,4 +1,5 @@
 using FASTER.Models;
+using FASTER.Services;
 using FASTER.Services.A3S;
 
 using Microsoft.AppCenter.Analytics;
@@ -307,6 +308,15 @@ namespace FASTER.ViewModel
             Properties.Settings.Default.Save();
             MainWindow.Instance.ContentProfileViews.Remove(MainWindow.Instance.ContentProfileViews.Find(p => p.Profile.Id == Profile.Id));
 
+            try
+            {
+                WindowsFirewallProfileRules.RemoveForProfile(Profile);
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage($"Profile deleted, but Windows Firewall cleanup failed: {ex.Message}");
+            }
+
             MainWindow.Instance.NavigateToConsole();
             MainWindow.Instance.LoadServerProfiles();
         }
@@ -362,6 +372,18 @@ namespace FASTER.ViewModel
             Properties.Settings.Default.Save();
             Profile.RaisePropertyChanged("CommandLine");
             DisplayMessage($"Saved Profile {Profile.Name}");
+
+            try
+            {
+                WindowsFirewallProfileRules.EnsureForProfile(Profile);
+                var ports = ArmaServerPorts.GetInboundUdpPorts(Profile.Port <= 0 ? 2302 : Profile.Port);
+                DisplayMessage(
+                    $"Windows Firewall: allowed inbound UDP {ports[0]}–{ports[^1]} for \"{Profile.Name}\".");
+            }
+            catch (Exception ex)
+            {
+                DisplayMessage($"Profile saved, but Windows Firewall update failed: {ex.Message}");
+            }
 
             if (MissingMods > 0)
                 DisplayMessage($"{MissingMods} mods were not found in the Arma directory.\nMake sure you have deployed the correct mods");
