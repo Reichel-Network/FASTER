@@ -100,6 +100,7 @@ namespace FASTER.ViewModel
             Events = new ObservableCollection<A3SEventInfo>();
             Profiles = new ObservableCollection<ServerProfile>();
             EditEventAddons = new ObservableCollection<A3SEventAddonPickItem>();
+            EditEventUnmatchedMods = new ObservableCollection<string>();
             AppendLog(A3SMetadataStoreFactory.UsesNativeOnly()
                 ? "Repositories ready. Classic .a3s metadata via native C# ObjectStream (no Java/bridge)."
                 : Settings.Default.a3sPreferNativeSerializer
@@ -114,6 +115,11 @@ namespace FASTER.ViewModel
         public ObservableCollection<ServerProfile> Profiles { get; }
 
         public ObservableCollection<A3SEventAddonPickItem> EditEventAddons { get; }
+
+        /// <summary>Preset mods that did not map onto a repo addon folder (shown in the event editor).</summary>
+        public ObservableCollection<string> EditEventUnmatchedMods { get; }
+
+        public bool HasEditEventUnmatchedMods => EditEventUnmatchedMods.Count > 0;
 
         public A3SRepository? SelectedRepository
         {
@@ -834,6 +840,113 @@ namespace FASTER.ViewModel
             EditEventDescription = string.Empty;
             _editEventOriginalName = string.Empty;
             EditEventAddons.Clear();
+            EditEventUnmatchedMods.Clear();
+            RaisePropertyChanged(nameof(HasEditEventUnmatchedMods));
+        }
+
+        /// <summary>
+        /// File-pick an Arma 3 Launcher HTML preset, match mods onto the repo tree, and open the
+        /// event editor named from <c>arma:PresetName</c> (create or update existing same-name event).
+        /// </summary>
+        public async Task ImportEventFromArmaPresetAsync(string? presetHtmlPath = null)
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            if (IsBusy)
+            {
+                DisplayMessage("A repository operation is already running.");
+                return;
+            }
+
+            var path = presetHtmlPath;
+            if (string.IsNullOrWhiteSpace(path))
+                path = Functions.SelectFile("Arma 3 Launcher preset|*.html|All files|*.*");
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            IsBusy = true;
+            Progress = 0;
+            try
+            {
+                StatusText = $"Importing Arma 3 preset from \"{System.IO.Path.GetFileName(path)}\"…";
+                AppendLog(StatusText);
+
+                var import = await _eventService
+                    .ImportLauncherPresetAsync(SelectedRepository, path!)
+                    .ConfigureAwait(true);
+
+                IsAddPanelOpen = false;
+                IsConfigPanelOpen = false;
+
+                IReadOnlyList<string> known;
+                try
+                {
+                    known = await _eventService.ListKnownAddonNamesAsync(SelectedRepository).ConfigureAwait(true);
+                }
+                catch
+                {
+                    known = Array.Empty<string>();
+                }
+
+                // Update existing event with the same preset name when present.
+                var existing = Events.FirstOrDefault(e =>
+                    string.Equals(e.Name, import.PresetName, StringComparison.OrdinalIgnoreCase));
+                if (existing == null)
+                {
+                    try
+                    {
+                        var listed = await _eventService.ListEventsAsync(SelectedRepository).ConfigureAwait(true);
+                        existing = listed.FirstOrDefault(e =>
+                            string.Equals(e.Name, import.PresetName, StringComparison.OrdinalIgnoreCase));
+                    }
+                    catch
+                    {
+                        // ignore — treat as create
+                    }
+                }
+
+                _editEventOriginalName = existing?.Name ?? string.Empty;
+                EditEventName = import.PresetName;
+                EditEventDescription = existing?.Description
+                    ?? $"Imported from Arma 3 Launcher preset \"{import.PresetName}\".";
+                PopulateEditEventAddons(known, import.AddonNames);
+
+                EditEventUnmatchedMods.Clear();
+                foreach (var miss in import.Unmatched.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase))
+                    EditEventUnmatchedMods.Add(miss.Summary);
+                RaisePropertyChanged(nameof(HasEditEventUnmatchedMods));
+
+                IsEventEditorOpen = true;
+
+                StatusText =
+                    $"Preset \"{import.PresetName}\": matched {import.MatchedCount}/{import.Matches.Count} " +
+                    $"mod(s) to repo addons; {import.Unmatched.Count} unmatched. " +
+                    "Review / fix, then Save event (writes .a3s/events).";
+                AppendLog(StatusText);
+                if (import.Unmatched.Count > 0)
+                {
+                    AppendLog("Unmatched preset mods:");
+                    foreach (var miss in import.Unmatched)
+                        AppendLog("  - " + miss.Summary);
+                }
+
+                DisplayMessage(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Import preset failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                IsBusy = false;
+                Progress = 0;
+            }
         }
 
         public async Task SaveEventEditorAsync()
@@ -880,6 +993,8 @@ namespace FASTER.ViewModel
                 EditEventDescription = string.Empty;
                 _editEventOriginalName = string.Empty;
                 EditEventAddons.Clear();
+                EditEventUnmatchedMods.Clear();
+                RaisePropertyChanged(nameof(HasEditEventUnmatchedMods));
 
                 StatusText =
                     $"Saved event \"{saved.Name}\" ({saved.AddonNames.Count} addon(s)) → publish root. " +
@@ -1387,6 +1502,9 @@ namespace FASTER.ViewModel
                 DisplayMessage(StatusText);
                 known = Array.Empty<string>();
             }
+
+            EditEventUnmatchedMods.Clear();
+            RaisePropertyChanged(nameof(HasEditEventUnmatchedMods));
 
             if (createNew)
             {

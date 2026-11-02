@@ -118,6 +118,12 @@ namespace FASTER.Views
             await Vm.OpenNewEventEditorAsync();
         }
 
+        private async void ImportArmaPreset_Click(object sender, RoutedEventArgs e)
+        {
+            if (Vm == null) return;
+            await Vm.ImportEventFromArmaPresetAsync();
+        }
+
         private async void EditEvent_Click(object sender, RoutedEventArgs e)
         {
             if (Vm == null) return;
