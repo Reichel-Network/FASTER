@@ -81,6 +81,9 @@ namespace FASTER.Services.A3S
             A3SSyncTreeNode? previousSync = null;
             A3SServerInfo? previousServerInfo = null;
             A3SChangelogs previousChangelogs = new();
+            // Always re-write events so Build/Publish ships .a3s/events (empty list if none yet).
+            // Previously Events=null skipped the write and left missing/stale events on hosts.
+            A3SEvents previousEvents = new();
 
             try
             {
@@ -107,6 +110,17 @@ namespace FASTER.Services.A3S
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 previousChangelogs = new A3SChangelogs();
+            }
+
+            try
+            {
+                previousEvents = await _metadataStore.ReadEventsAsync(contentRoot, cancellationToken).ConfigureAwait(false)
+                                 ?? new A3SEvents();
+                previousEvents.List ??= new List<A3SEventInfo>();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                previousEvents = new A3SEvents();
             }
 
             progress?.Report(new A3SSyncProgress { Message = "Walking content tree and computing SHA-1…" });
@@ -177,13 +191,14 @@ namespace FASTER.Services.A3S
             });
 
             // Companion BRIDGE.md Phase 2: single write --kind all from files envelope.
+            // Events are preserved from the local content root (author via Repositories → event editor).
             var writeSet = new A3SMetadataWriteSet
             {
                 Sync = syncRoot,
                 ServerInfo = serverInfo,
                 Changelogs = changelogs,
                 Autoconfig = options.SkipAutoconfig ? null : BuildAutoconfig(repository, connections),
-                Events = null
+                Events = previousEvents
             };
             await _metadataStore.WriteAllAsync(contentRoot, writeSet, cancellationToken).ConfigureAwait(false);
 

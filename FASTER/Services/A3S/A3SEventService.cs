@@ -7,11 +7,12 @@ using System.Threading.Tasks;
 
 using FASTER.Models;
 using FASTER.Properties;
+using FASTER.Services.A3S.Serialization;
 
 namespace FASTER.Services.A3S
 {
     /// <summary>
-    /// Phase 3: list A3S events, map addon sets onto Server Profile mod lists,
+    /// Phase 3+: list/create/edit A3S events (modsets), map addon sets onto Server Profile mod lists,
     /// optional favorite-server write into autoconfig, and Sync → Deploy → Launch orchestration.
     /// </summary>
     public class A3SEventService
@@ -80,25 +81,219 @@ namespace FASTER.Services.A3S
                 $"Repository \"{repository.Name}\" has no autoconfig URL or local content root for metadata.");
         }
 
+        /// <summary>
+        /// Prefer local publish/content root when <c>.a3s/events</c> exists (host authoring),
+        /// otherwise fall back to <see cref="ResolveMetadataSource"/>.
+        /// </summary>
+        public static string ResolveEventsReadSource(A3SRepository repository)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            try
+            {
+                var root = ResolveWritableContentRoot(repository);
+                var eventsPath = Path.Combine(root, A3SUrlHelpers.A3SFolderName, A3SObjectStreamMapper.KindEvents);
+                if (File.Exists(eventsPath))
+                    return root;
+            }
+            catch
+            {
+                // fall through to remote/autoconfig
+            }
+
+            return ResolveMetadataSource(repository);
+        }
+
         /// <summary>List events from repository metadata via <see cref="IA3SMetadataStore"/>.</summary>
         public async Task<IReadOnlyList<A3SEventInfo>> ListEventsAsync(
             A3SRepository repository,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(repository);
-            var source = ResolveMetadataSource(repository);
+            var source = ResolveEventsReadSource(repository);
 
             try
             {
                 var events = await _metadataStore.ReadEventsAsync(source, cancellationToken).ConfigureAwait(false);
                 return events.List ?? new List<A3SEventInfo>();
             }
-            catch (A3SBridgeException)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Missing events file — try ReadAll which tolerates null events.
-                var bundle = await _metadataStore.ReadAllAsync(source, cancellationToken).ConfigureAwait(false);
-                return bundle.Events?.List ?? (IReadOnlyList<A3SEventInfo>)Array.Empty<A3SEventInfo>();
+                try
+                {
+                    var bundle = await _metadataStore.ReadAllAsync(source, cancellationToken).ConfigureAwait(false);
+                    return bundle.Events?.List ?? (IReadOnlyList<A3SEventInfo>)Array.Empty<A3SEventInfo>();
+                }
+                catch
+                {
+                    return Array.Empty<A3SEventInfo>();
+                }
             }
+        }
+
+        /// <summary>
+        /// Known addon folder names from local sync metadata and/or publish-tree directories
+        /// that look like Arma3Sync addons (<c>addons/</c> child or <c>@</c> prefix).
+        /// </summary>
+        public async Task<IReadOnlyList<string>> ListKnownAddonNamesAsync(
+            A3SRepository repository,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            string? contentRoot = null;
+            try
+            {
+                contentRoot = ResolveWritableContentRoot(repository);
+            }
+            catch
+            {
+                // optional — may still read remote sync
+            }
+
+            // Prefer local sync tree (markAsAddon folders).
+            foreach (var candidate in new[] { contentRoot, TrySafe(() => ResolveMetadataSource(repository)) })
+            {
+                if (string.IsNullOrWhiteSpace(candidate))
+                    continue;
+                try
+                {
+                    var sync = await _metadataStore.ReadSyncTreeAsync(candidate, cancellationToken).ConfigureAwait(false);
+                    foreach (var path in sync.AddonFolderRelativePaths())
+                    {
+                        var key = NormalizeAddonEventKey(path);
+                        if (!string.IsNullOrEmpty(key))
+                            names.Add(key);
+                    }
+
+                    if (names.Count > 0)
+                        break;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // try next source / disk walk
+                }
+            }
+
+            // Disk walk of publish/content root (works before first Build).
+            if (contentRoot != null && Directory.Exists(contentRoot))
+            {
+                foreach (var name in EnumerateAddonFoldersOnDisk(contentRoot))
+                    names.Add(name);
+            }
+
+            // Keep any keys already present on events so edits do not drop orphans.
+            try
+            {
+                foreach (var evt in await ListEventsAsync(repository, cancellationToken).ConfigureAwait(false))
+                {
+                    foreach (var key in evt.AddonNames.Keys)
+                    {
+                        if (!string.IsNullOrWhiteSpace(key))
+                            names.Add(key.Trim());
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // ignore
+            }
+
+            return names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>Write the full events list to <c>.a3s/events</c> under the publish/content root.</summary>
+        public async Task SaveEventsAsync(
+            A3SRepository repository,
+            A3SEvents events,
+            string? contentRootOverride = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            ArgumentNullException.ThrowIfNull(events);
+            events.List ??= new List<A3SEventInfo>();
+
+            var contentRoot = !string.IsNullOrWhiteSpace(contentRootOverride)
+                ? contentRootOverride!.Trim()
+                : ResolveWritableContentRoot(repository);
+
+            Directory.CreateDirectory(contentRoot);
+            await _metadataStore.WriteMetadataAsync(contentRoot, "events", events, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Create or update an event (modset). When <paramref name="originalName"/> differs from
+        /// <paramref name="name"/>, renames that entry. Addon map values: <c>false</c>=required, <c>true</c>=optional.
+        /// </summary>
+        public async Task<A3SEventInfo> UpsertEventAsync(
+            A3SRepository repository,
+            string name,
+            string? description,
+            IDictionary<string, bool>? addonNames,
+            string? originalName = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Event name is required.", nameof(name));
+
+            var trimmed = name.Trim();
+            var lookup = string.IsNullOrWhiteSpace(originalName) ? trimmed : originalName.Trim();
+
+            var list = (await ListEventsAsync(repository, cancellationToken).ConfigureAwait(false)).ToList();
+            var existing = list.FirstOrDefault(e =>
+                string.Equals(e.Name, lookup, StringComparison.OrdinalIgnoreCase));
+
+            // Collision when renaming/creating onto another event's name.
+            var conflict = list.FirstOrDefault(e =>
+                !ReferenceEquals(e, existing)
+                && string.Equals(e.Name, trimmed, StringComparison.OrdinalIgnoreCase));
+            if (conflict != null)
+                throw new InvalidOperationException($"An event named \"{trimmed}\" already exists.");
+
+            A3SEventInfo target;
+            if (existing == null)
+            {
+                target = new A3SEventInfo { Name = trimmed };
+                list.Add(target);
+            }
+            else
+            {
+                target = existing;
+                target.Name = trimmed;
+            }
+
+            target.Description = description?.Trim() ?? string.Empty;
+            target.AddonNames = NormalizeAddonMap(addonNames);
+            target.DlcNames ??= new Dictionary<string, bool>();
+            target.UserconfigFolderNames ??= new Dictionary<string, bool>();
+
+            await SaveEventsAsync(repository, new A3SEvents { List = list }, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return target;
+        }
+
+        /// <summary>Remove an event by name and rewrite <c>.a3s/events</c>.</summary>
+        public async Task<bool> DeleteEventAsync(
+            A3SRepository repository,
+            string eventName,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            if (string.IsNullOrWhiteSpace(eventName))
+                throw new ArgumentException("Event name is required.", nameof(eventName));
+
+            var list = (await ListEventsAsync(repository, cancellationToken).ConfigureAwait(false)).ToList();
+            var removed = list.RemoveAll(e =>
+                string.Equals(e.Name, eventName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (removed == 0)
+                return false;
+
+            await SaveEventsAsync(repository, new A3SEvents { List = list }, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return true;
         }
 
         /// <summary>
@@ -537,7 +732,67 @@ namespace FASTER.Services.A3S
                 return repository.LocalPath.Trim();
 
             throw new InvalidOperationException(
-                $"Repository \"{repository.Name}\" needs a LocalPath or Publish Root to write autoconfig.");
+                $"Repository \"{repository.Name}\" needs a LocalPath or Publish Root to write events/autoconfig.");
+        }
+
+        private static Dictionary<string, bool> NormalizeAddonMap(IDictionary<string, bool>? addonNames)
+        {
+            var map = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            if (addonNames == null)
+                return map;
+
+            foreach (var kv in addonNames)
+            {
+                var key = NormalizeAddonEventKey(kv.Key);
+                if (string.IsNullOrEmpty(key))
+                    continue;
+                map[key] = kv.Value;
+            }
+
+            return map;
+        }
+
+        /// <summary>Event keys are folder names (workshop id or <c>@mod</c>), not nested paths.</summary>
+        public static string NormalizeAddonEventKey(string? pathOrName)
+        {
+            if (string.IsNullOrWhiteSpace(pathOrName))
+                return string.Empty;
+            var trimmed = pathOrName.Trim().Replace('\\', '/').Trim('/');
+            if (string.IsNullOrEmpty(trimmed))
+                return string.Empty;
+            var slash = trimmed.LastIndexOf('/');
+            return slash >= 0 ? trimmed[(slash + 1)..] : trimmed;
+        }
+
+        private static IEnumerable<string> EnumerateAddonFoldersOnDisk(string contentRoot)
+        {
+            string[] entries;
+            try
+            {
+                entries = Directory.GetDirectories(contentRoot);
+            }
+            catch
+            {
+                yield break;
+            }
+
+            foreach (var dir in entries)
+            {
+                var name = Path.GetFileName(dir);
+                if (string.IsNullOrEmpty(name) || A3SUrlHelpers.IsMetadataSidecarDirectory(name))
+                    continue;
+
+                var looksLikeAddon = name.StartsWith('@')
+                    || Directory.Exists(Path.Combine(dir, A3SBuildService.AddonsFolderName));
+                if (looksLikeAddon)
+                    yield return name;
+            }
+        }
+
+        private static T? TrySafe<T>(Func<T> factory)
+        {
+            try { return factory(); }
+            catch { return default; }
         }
 
         private void PersistProfile(ServerProfile profile)

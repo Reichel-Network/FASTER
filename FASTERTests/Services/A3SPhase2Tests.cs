@@ -194,6 +194,7 @@ namespace FASTER.Services.Tests
                 Assert.That(store.LastWriteSet.ServerInfo!.Revision, Is.EqualTo(4));
                 Assert.That(store.LastWriteSet.Changelogs!.List.Any(c => c.Revision == 4), Is.True);
                 Assert.That(store.LastWriteSet.Autoconfig!.RepositoryName, Is.EqualTo("pub"));
+                Assert.That(store.LastWriteSet.Events, Is.Not.Null);
                 Assert.That(repo.LastRevision, Is.EqualTo(4));
                 Assert.That(repo.LastBuildUtc, Is.Not.Null);
                 Assert.That(File.Exists(Path.Combine(root, ".a3s-json", "all.json")));

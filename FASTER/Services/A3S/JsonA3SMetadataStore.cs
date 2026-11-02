@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -168,7 +169,10 @@ namespace FASTER.Services.A3S
             // Also drop classic-looking placeholders so publish can find metadata file names.
             var a3sDir = Path.Combine(contentRoot, A3SUrlHelpers.A3SFolderName);
             Directory.CreateDirectory(a3sDir);
-            foreach (var name in new[] { "sync", "serverinfo", "autoconfig", "changelogs" })
+            var markerNames = new List<string> { "sync", "serverinfo", "autoconfig", "changelogs" };
+            if (files.Events != null)
+                markerNames.Add("events");
+            foreach (var name in markerNames)
             {
                 var marker = Path.Combine(a3sDir, name);
                 if (!File.Exists(marker))
