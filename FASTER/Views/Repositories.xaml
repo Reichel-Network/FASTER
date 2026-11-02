@@ -184,6 +184,10 @@
                                     Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
                                     Padding="10,4" Margin="0,0,5,0" Click="NewEvent_Click"
                                     IsEnabled="{Binding CanStartWork}"/>
+                            <Button Content="Import from Arma 3 preset…" ToolTip="Import Arma 3 Launcher HTML preset as an A3S event (modset)"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Padding="10,4" Margin="0,0,5,0" Click="ImportArmaPreset_Click"
+                                    IsEnabled="{Binding CanStartWork}"/>
                             <Button Content="Edit event" ToolTip="Rename / change description / edit addon list"
                                     Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
                                     Padding="10,4" Margin="0,0,5,0" Click="EditEvent_Click"
@@ -211,6 +215,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="160"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <TextBlock Margin="0,0,0,8" Opacity="0.8" TextWrapping="Wrap"
@@ -247,7 +252,15 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Right">
+                        <StackPanel Grid.Row="4" Margin="0,8,0,0"
+                                    Visibility="{Binding HasEditEventUnmatchedMods, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Margin="0,0,0,4" FontWeight="SemiBold" Foreground="#C0392B" TextWrapping="Wrap"
+                                       Text="Unmatched preset mods (not found in repo tree — add the addon folder or fix naming, then re-import / tick manually):"/>
+                            <ListBox ItemsSource="{Binding EditEventUnmatchedMods}" MaxHeight="100"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     Background="Transparent" BorderThickness="0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Right">
                             <Button Content="Save event" Margin="0,0,5,0" Padding="12,4"
                                     Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
                                     Click="SaveEvent_Click" IsEnabled="{Binding CanStartWork}"/>

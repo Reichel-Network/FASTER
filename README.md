@@ -66,6 +66,7 @@ Thanks go out to all the guys who helped the developpment and those who will tes
   - Publish: Configure publish root / upload (HTTP(S) or SFTP), Build (C# walk + SHA-1), Publish (upload changed files + `.a3s/*`)
   - Events ↔ profiles: map A3S events onto Profile mod lists; optional Sync event → Deploy → Launch
   - Create / edit / delete A3S events (modsets) natively on Repositories; writes classic `.a3s/events` (ObjectStream); Build/Publish includes them
+  - Import Arma 3 Launcher HTML presets into A3S events (match workshop-id / `@mod` folders; show unmatched mods)
   - Classic `.a3s` metadata read/write in **pure C#** (`SerializerA3SMetadataStore`) — **no Java/JRE required** for Sync/Build/Publish; optional Advanced bridge fallback only (`a3sEnableMetadataBridgeFallback`, default off). GPL-3.0
   - Deployment: “A3S Publish Root” uses Install Path as the selected repository’s publish main folder
 

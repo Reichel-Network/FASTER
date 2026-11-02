@@ -132,6 +132,21 @@ namespace FASTER.Services.A3S
         }
 
         /// <summary>
+        /// Parse an Arma 3 Launcher HTML preset and match mods onto this repository's known addon keys.
+        /// Does not write <c>.a3s/events</c> — caller reviews unmatched rows then <see cref="UpsertEventAsync"/>.
+        /// </summary>
+        public async Task<A3SPresetImportResult> ImportLauncherPresetAsync(
+            A3SRepository repository,
+            string presetHtmlPath,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(repository);
+            var preset = A3SArmaLauncherPresetParser.ParseFile(presetHtmlPath);
+            var known = await ListKnownAddonNamesAsync(repository, cancellationToken).ConfigureAwait(false);
+            return A3SArmaLauncherPresetParser.MatchToAddonKeys(preset, known);
+        }
+
+        /// <summary>
         /// Known addon folder names from local sync metadata and/or publish-tree directories
         /// that look like Arma3Sync addons (<c>addons/</c> child or <c>@</c> prefix).
         /// </summary>
