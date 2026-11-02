@@ -27,6 +27,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" MinHeight="100" />
             </Grid.RowDefinitions>
 
@@ -141,42 +142,124 @@
                 </Grid.Effect>
                 <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="8">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox Grid.Column="0" Margin="0,0,5,0"
-                                  ItemsSource="{Binding Events}"
-                                  SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
-                                  DisplayMemberPath="Name"
-                                  mah:TextBoxHelper.Watermark="A3S event (modset)"
-                                  ToolTip="Events loaded from .a3s/events via IA3SMetadataStore"/>
-                        <ComboBox Grid.Column="1" Margin="0,0,5,0"
-                                  ItemsSource="{Binding Profiles}"
-                                  SelectedItem="{Binding SelectedProfileForEvent, Mode=TwoWay}"
-                                  DisplayMemberPath="Name"
-                                  mah:TextBoxHelper.Watermark="Server profile"
-                                  ToolTip="Profile to receive event addon lists / launch target"/>
-                        <CheckBox Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center"
-                                  Content="Client" IsChecked="{Binding ApplyEventClient}"
-                                  ToolTip="Apply event addons to client-side mod list"/>
-                        <CheckBox Grid.Column="3" Margin="0,0,8,0" VerticalAlignment="Center"
-                                  Content="Server" IsChecked="{Binding ApplyEventServer}"
-                                  ToolTip="Apply event addons to server-side mod list"/>
-                        <CheckBox Grid.Column="4" Margin="0,0,8,0" VerticalAlignment="Center"
-                                  Content="HC" IsChecked="{Binding ApplyEventHeadless}"
-                                  ToolTip="Apply event addons to headless client mod list"/>
-                        <TextBlock Grid.Column="5" VerticalAlignment="Center" Opacity="0.75" TextWrapping="Wrap"
-                                   Text="{Binding SelectedEvent.Description}"/>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox Grid.Column="0" Margin="0,0,5,0"
+                                      ItemsSource="{Binding Events}"
+                                      SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                                      DisplayMemberPath="Name"
+                                      mah:TextBoxHelper.Watermark="A3S event (modset)"
+                                      ToolTip="Events loaded from .a3s/events via IA3SMetadataStore"/>
+                            <ComboBox Grid.Column="1" Margin="0,0,5,0"
+                                      ItemsSource="{Binding Profiles}"
+                                      SelectedItem="{Binding SelectedProfileForEvent, Mode=TwoWay}"
+                                      DisplayMemberPath="Name"
+                                      mah:TextBoxHelper.Watermark="Server profile"
+                                      ToolTip="Profile to receive event addon lists / launch target"/>
+                            <CheckBox Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center"
+                                      Content="Client" IsChecked="{Binding ApplyEventClient}"
+                                      ToolTip="Apply event addons to client-side mod list"/>
+                            <CheckBox Grid.Column="3" Margin="0,0,8,0" VerticalAlignment="Center"
+                                      Content="Server" IsChecked="{Binding ApplyEventServer}"
+                                      ToolTip="Apply event addons to server-side mod list"/>
+                            <CheckBox Grid.Column="4" Margin="0,0,8,0" VerticalAlignment="Center"
+                                      Content="HC" IsChecked="{Binding ApplyEventHeadless}"
+                                      ToolTip="Apply event addons to headless client mod list"/>
+                            <TextBlock Grid.Column="5" VerticalAlignment="Center" Opacity="0.75" TextWrapping="Wrap"
+                                       Text="{Binding SelectedEvent.Description}"/>
+                        </Grid>
+                        <WrapPanel Grid.Row="1" Margin="0,8,0,0" Orientation="Horizontal">
+                            <Button Content="New event" ToolTip="Create a new A3S event (modset) under publish root"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Padding="10,4" Margin="0,0,5,0" Click="NewEvent_Click"
+                                    IsEnabled="{Binding CanStartWork}"/>
+                            <Button Content="Edit event" ToolTip="Rename / change description / edit addon list"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Padding="10,4" Margin="0,0,5,0" Click="EditEvent_Click"
+                                    IsEnabled="{Binding CanStartWork}"/>
+                            <Button Content="Delete event" ToolTip="Delete selected event and rewrite .a3s/events"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Padding="10,4" Margin="0,0,5,0" Click="DeleteEvent_Click"
+                                    IsEnabled="{Binding CanStartWork}"/>
+                            <TextBlock VerticalAlignment="Center" Opacity="0.7" Margin="8,0,0,0" TextWrapping="Wrap"
+                                       Text="Modset = A3S event. Save writes classic .a3s/events; Build/Publish ships it."/>
+                        </WrapPanel>
                     </Grid>
                 </Border>
             </Grid>
 
             <Grid Grid.Row="3" Margin="10,0,10,5"
+                  Visibility="{Binding IsEventEditorOpen, Converter={StaticResource BoolToVis}}">
+                <Grid.Effect>
+                    <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
+                </Grid.Effect>
+                <Border Background="{StaticResource MahApps.Brushes.Window.Background}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="160"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Margin="0,0,0,8" Opacity="0.8" TextWrapping="Wrap"
+                                   Text="Event editor — addon keys are folder names from the publish/sync tree (workshop id or @mod). Optional = Arma3Sync optional flag."/>
+                        <Grid Grid.Row="1" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Margin="0,0,5,0"
+                                     Text="{Binding EditEventName, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Event name (modset)"/>
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding EditEventDescription, UpdateSourceTrigger=PropertyChanged}"
+                                     mah:TextBoxHelper.UseFloatingWatermark="True"
+                                     mah:TextBoxHelper.Watermark="Description (optional)"/>
+                        </Grid>
+                        <TextBlock Grid.Row="2" Margin="0,0,0,4" Opacity="0.75"
+                                   Text="Addons in repository"/>
+                        <ListBox Grid.Row="3" ItemsSource="{Binding EditEventAddons}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel LastChildFill="True" Margin="0,2">
+                                        <CheckBox DockPanel.Dock="Left" Margin="0,0,10,0"
+                                                  Content="In event" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                        <CheckBox DockPanel.Dock="Right" Margin="10,0,0,0"
+                                                  Content="Optional" IsChecked="{Binding IsOptional, Mode=TwoWay}"
+                                                  IsEnabled="{Binding IsSelected}"/>
+                                        <TextBlock VerticalAlignment="Center" Text="{Binding Name}" TextWrapping="NoWrap"/>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Right">
+                            <Button Content="Save event" Margin="0,0,5,0" Padding="12,4"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Click="SaveEvent_Click" IsEnabled="{Binding CanStartWork}"/>
+                            <Button Content="Cancel" Padding="12,4"
+                                    Style="{StaticResource MahApps.Styles.Button.MetroSquare.Accent}" BorderThickness="0"
+                                    Click="CancelEvent_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Grid Grid.Row="4" Margin="10,0,10,5"
                   Visibility="{Binding IsAddPanelOpen, Converter={StaticResource BoolToVis}}">
                 <Grid.Effect>
                     <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
@@ -212,7 +295,7 @@
                 </Border>
             </Grid>
 
-            <Grid Grid.Row="4" Margin="10,0,10,5"
+            <Grid Grid.Row="5" Margin="10,0,10,5"
                   Visibility="{Binding IsConfigPanelOpen, Converter={StaticResource BoolToVis}}">
                 <Grid.Effect>
                     <DropShadowEffect BlurRadius="5" RenderingBias="Performance" ShadowDepth="1"/>
@@ -284,10 +367,10 @@
                 </Border>
             </Grid>
 
-            <ProgressBar Grid.Row="5" Margin="10,0,10,5" Height="6" Minimum="0" Maximum="100"
+            <ProgressBar Grid.Row="6" Margin="10,0,10,5" Height="6" Minimum="0" Maximum="100"
                          Value="{Binding Progress}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
 
-            <TextBox Grid.Row="6" Margin="10,5,10,10" IsReadOnly="True" TextWrapping="Wrap"
+            <TextBox Grid.Row="7" Margin="10,5,10,10" IsReadOnly="True" TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
                      Text="{Binding Output, Mode=OneWay}"
                      mah:TextBoxHelper.UseFloatingWatermark="True"

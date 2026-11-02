@@ -46,6 +46,10 @@ namespace FASTER.ViewModel
         private string _output = string.Empty;
         private bool _isAddPanelOpen;
         private bool _isConfigPanelOpen;
+        private bool _isEventEditorOpen;
+        private string _editEventName = string.Empty;
+        private string _editEventDescription = string.Empty;
+        private string _editEventOriginalName = string.Empty;
         private double _progress;
         private CancellationTokenSource? _cts;
         private A3SEventInfo? _selectedEvent;
@@ -95,6 +99,7 @@ namespace FASTER.ViewModel
             Repositories = _repositoryService.Repositories;
             Events = new ObservableCollection<A3SEventInfo>();
             Profiles = new ObservableCollection<ServerProfile>();
+            EditEventAddons = new ObservableCollection<A3SEventAddonPickItem>();
             AppendLog(A3SMetadataStoreFactory.UsesNativeOnly()
                 ? "Repositories ready. Classic .a3s metadata via native C# ObjectStream (no Java/bridge)."
                 : Settings.Default.a3sPreferNativeSerializer
@@ -107,6 +112,8 @@ namespace FASTER.ViewModel
         public ObservableCollection<A3SEventInfo> Events { get; }
 
         public ObservableCollection<ServerProfile> Profiles { get; }
+
+        public ObservableCollection<A3SEventAddonPickItem> EditEventAddons { get; }
 
         public A3SRepository? SelectedRepository
         {
@@ -152,6 +159,24 @@ namespace FASTER.ViewModel
         }
 
         public bool HasEvents => Events.Count > 0;
+
+        public bool IsEventEditorOpen
+        {
+            get => _isEventEditorOpen;
+            set { _isEventEditorOpen = value; RaisePropertyChanged(); }
+        }
+
+        public string EditEventName
+        {
+            get => _editEventName;
+            set { _editEventName = value ?? string.Empty; RaisePropertyChanged(); }
+        }
+
+        public string EditEventDescription
+        {
+            get => _editEventDescription;
+            set { _editEventDescription = value ?? string.Empty; RaisePropertyChanged(); }
+        }
 
         public string NewName
         {
@@ -308,6 +333,7 @@ namespace FASTER.ViewModel
             NewAutoconfigUrl = string.Empty;
             NewLocalPath = Settings.Default.a3sDefaultSyncPath ?? string.Empty;
             IsConfigPanelOpen = false;
+            IsEventEditorOpen = false;
             IsAddPanelOpen = true;
         }
 
@@ -328,6 +354,7 @@ namespace FASTER.ViewModel
             }
 
             IsAddPanelOpen = false;
+            IsEventEditorOpen = false;
             LoadConfigFromSelected();
             IsConfigPanelOpen = true;
         }
@@ -772,6 +799,169 @@ namespace FASTER.ViewModel
             }
         }
 
+        public async Task OpenNewEventEditorAsync()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            await OpenEventEditorAsync(createNew: true).ConfigureAwait(true);
+        }
+
+        public async Task OpenEditEventEditorAsync()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            if (SelectedEvent == null)
+            {
+                DisplayMessage("Select an event to edit, or click New event.");
+                return;
+            }
+
+            await OpenEventEditorAsync(createNew: false).ConfigureAwait(true);
+        }
+
+        public void CancelEventEditor()
+        {
+            IsEventEditorOpen = false;
+            EditEventName = string.Empty;
+            EditEventDescription = string.Empty;
+            _editEventOriginalName = string.Empty;
+            EditEventAddons.Clear();
+        }
+
+        public async Task SaveEventEditorAsync()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(EditEventName))
+            {
+                DisplayMessage("Event name is required.");
+                return;
+            }
+
+            if (IsBusy)
+            {
+                DisplayMessage("A repository operation is already running.");
+                return;
+            }
+
+            IsBusy = true;
+            Progress = 0;
+            try
+            {
+                StatusText = $"Saving event \"{EditEventName.Trim()}\"…";
+                AppendLog(StatusText);
+                var addonMap = EditEventAddons
+                    .Where(a => a.IsSelected)
+                    .ToDictionary(a => a.Name, a => a.IsOptional, StringComparer.OrdinalIgnoreCase);
+
+                var saved = await _eventService.UpsertEventAsync(
+                        SelectedRepository,
+                        EditEventName.Trim(),
+                        EditEventDescription,
+                        addonMap,
+                        string.IsNullOrWhiteSpace(_editEventOriginalName) ? null : _editEventOriginalName)
+                    .ConfigureAwait(true);
+
+                await ReloadEventsFromServiceAsync(preferName: saved.Name).ConfigureAwait(true);
+                IsEventEditorOpen = false;
+                EditEventName = string.Empty;
+                EditEventDescription = string.Empty;
+                _editEventOriginalName = string.Empty;
+                EditEventAddons.Clear();
+
+                StatusText =
+                    $"Saved event \"{saved.Name}\" ({saved.AddonNames.Count} addon(s)) → publish root. " +
+                    "Build / Publish to ship .a3s/events.";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Save event failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                IsBusy = false;
+                Progress = 0;
+            }
+        }
+
+        public async Task DeleteSelectedEventAsync()
+        {
+            if (SelectedRepository == null)
+            {
+                DisplayMessage("Select a repository first.");
+                return;
+            }
+
+            if (SelectedEvent == null)
+            {
+                DisplayMessage("Select an event to delete.");
+                return;
+            }
+
+            if (IsBusy)
+            {
+                DisplayMessage("A repository operation is already running.");
+                return;
+            }
+
+            var name = SelectedEvent.Name;
+            var answer = MessageBox.Show(
+                $"Delete A3S event (modset) \"{name}\"?\n\nThis rewrites .a3s/events under the publish root. Publish to update remote clients.",
+                "Delete event",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (answer != MessageBoxResult.Yes)
+                return;
+
+            IsBusy = true;
+            Progress = 0;
+            try
+            {
+                StatusText = $"Deleting event \"{name}\"…";
+                AppendLog(StatusText);
+                var deleted = await _eventService.DeleteEventAsync(SelectedRepository, name).ConfigureAwait(true);
+                if (!deleted)
+                {
+                    StatusText = $"Event \"{name}\" was not found.";
+                    DisplayMessage(StatusText);
+                    return;
+                }
+
+                CancelEventEditor();
+                await ReloadEventsFromServiceAsync().ConfigureAwait(true);
+                StatusText = $"Deleted event \"{name}\". Build / Publish to ship .a3s/events.";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Delete event failed: {ex.Message}";
+                AppendLog(StatusText);
+                DisplayMessage(StatusText);
+            }
+            finally
+            {
+                IsBusy = false;
+                Progress = 0;
+            }
+        }
+
         public async Task LoadEventsAsync()
         {
             if (SelectedRepository == null)
@@ -1177,6 +1367,99 @@ namespace FASTER.ViewModel
             });
         }
 
+        private async Task OpenEventEditorAsync(bool createNew)
+        {
+            if (SelectedRepository == null)
+                return;
+
+            IsAddPanelOpen = false;
+            IsConfigPanelOpen = false;
+
+            StatusText = "Loading known addons for event editor…";
+            IReadOnlyList<string> known;
+            try
+            {
+                known = await _eventService.ListKnownAddonNamesAsync(SelectedRepository).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Could not list addons: {ex.Message}";
+                DisplayMessage(StatusText);
+                known = Array.Empty<string>();
+            }
+
+            if (createNew)
+            {
+                _editEventOriginalName = string.Empty;
+                EditEventName = string.Empty;
+                EditEventDescription = string.Empty;
+                PopulateEditEventAddons(known, selected: null);
+            }
+            else
+            {
+                var evt = SelectedEvent!;
+                _editEventOriginalName = evt.Name;
+                EditEventName = evt.Name;
+                EditEventDescription = evt.Description ?? string.Empty;
+                PopulateEditEventAddons(known, evt.AddonNames);
+            }
+
+            IsEventEditorOpen = true;
+            StatusText = createNew
+                ? "New event — pick addons, then Save (writes .a3s/events under publish root)."
+                : $"Editing event \"{EditEventName}\".";
+        }
+
+        private void PopulateEditEventAddons(
+            IReadOnlyList<string> known,
+            IDictionary<string, bool>? selected)
+        {
+            EditEventAddons.Clear();
+            var names = new HashSet<string>(known ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            if (selected != null)
+            {
+                foreach (var key in selected.Keys)
+                    names.Add(key);
+            }
+
+            foreach (var name in names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+            {
+                var isSelected = selected != null
+                    && selected.Keys.Any(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
+                var isOptional = false;
+                if (selected != null)
+                {
+                    foreach (var kv in selected)
+                    {
+                        if (string.Equals(kv.Key, name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isOptional = kv.Value;
+                            break;
+                        }
+                    }
+                }
+
+                EditEventAddons.Add(new A3SEventAddonPickItem(name, isSelected, isOptional));
+            }
+        }
+
+        private async Task ReloadEventsFromServiceAsync(string? preferName = null)
+        {
+            if (SelectedRepository == null)
+                return;
+
+            var list = await _eventService.ListEventsAsync(SelectedRepository).ConfigureAwait(true);
+            Events.Clear();
+            foreach (var evt in list)
+                Events.Add(evt);
+            SelectedEvent = !string.IsNullOrWhiteSpace(preferName)
+                ? Events.FirstOrDefault(e =>
+                      string.Equals(e.Name, preferName, StringComparison.OrdinalIgnoreCase))
+                  ?? Events.FirstOrDefault()
+                : Events.FirstOrDefault();
+            RaisePropertyChanged(nameof(HasEvents));
+        }
+
         private void AppendLog(string line)
         {
             if (string.IsNullOrEmpty(Output))
@@ -1200,5 +1483,46 @@ namespace FASTER.ViewModel
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         }
+    }
+
+    /// <summary>Selectable addon row for the Repositories event editor.</summary>
+    public sealed class A3SEventAddonPickItem : INotifyPropertyChanged
+    {
+        private bool _isSelected;
+        private bool _isOptional;
+
+        public A3SEventAddonPickItem(string name, bool isSelected, bool isOptional)
+        {
+            Name = name ?? string.Empty;
+            _isSelected = isSelected;
+            _isOptional = isOptional;
+        }
+
+        public string Name { get; }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected == value) return;
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+
+        /// <summary>Arma3Sync optional flag (<c>true</c> in classic events map).</summary>
+        public bool IsOptional
+        {
+            get => _isOptional;
+            set
+            {
+                if (_isOptional == value) return;
+                _isOptional = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsOptional)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
     }
 }
