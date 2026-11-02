@@ -1530,7 +1530,7 @@ namespace FASTER.ViewModel
 
         private void PopulateEditEventAddons(
             IReadOnlyList<string> known,
-            IDictionary<string, bool>? selected)
+            IReadOnlyDictionary<string, bool>? selected)
         {
             EditEventAddons.Clear();
             var names = new HashSet<string>(known ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
